@@ -25,9 +25,20 @@ export async function fetchHistory(
   end: Date,
 ): Promise<PricePoint[]> {
   const sym = normalizeTicker(ticker);
-  const url = `https://stooq.com/q/d/l/?s=${encodeURIComponent(sym)}&d1=${fmt(start)}&d2=${fmt(end)}&i=d`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch ${ticker}`);
+  const supaUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supaKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const url = `${supaUrl}/functions/v1/stooq-proxy?ticker=${encodeURIComponent(sym)}&d1=${fmt(start)}&d2=${fmt(end)}`;
+  const res = await fetch(url, {
+    headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}` },
+  });
+  if (!res.ok) {
+    let msg = `Failed to fetch ${ticker}`;
+    try {
+      const j = await res.json();
+      if (j?.error) msg = j.error;
+    } catch { /* ignore */ }
+    throw new Error(msg);
+  }
   const text = await res.text();
   if (text.toLowerCase().includes("no data") || !text.includes("\n")) {
     throw new Error(`No data for ticker "${ticker}"`);
