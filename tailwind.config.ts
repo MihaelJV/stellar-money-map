@@ -57,6 +57,27 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        bull: "hsl(var(--bull))",
+        bear: "hsl(var(--bear))",
+        neutral: "hsl(var(--neutral))",
+        chart: {
+          1: "hsl(var(--chart-1))",
+          2: "hsl(var(--chart-2))",
+          3: "hsl(var(--chart-3))",
+          4: "hsl(var(--chart-4))",
+          5: "hsl(var(--chart-5))",
+          6: "hsl(var(--chart-6))",
+          7: "hsl(var(--chart-7))",
+          8: "hsl(var(--chart-8))",
+        },
+      },
+      backgroundImage: {
+        "gradient-primary": "var(--gradient-primary)",
+        "gradient-card": "var(--gradient-card)",
+      },
+      boxShadow: {
+        glow: "var(--shadow-glow)",
+        card: "var(--shadow-card)",
       },
       borderRadius: {
         lg: "var(--radius)",
