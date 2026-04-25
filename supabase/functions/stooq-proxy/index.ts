@@ -1,4 +1,5 @@
 // Proxies Yahoo Finance chart API (no key required, works server-side).
+// VERSION: yahoo-v2
 // Returns normalized JSON: { points: [{date: ISO, close: number}, ...] }
 
 const corsHeaders = {
