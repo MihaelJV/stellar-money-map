@@ -1,63 +1,81 @@
-// Proxies Stooq daily history CSV. Public endpoint, no auth required.
+// Proxies Yahoo Finance chart API (no key required, works server-side).
+// Returns normalized JSON: { points: [{date: ISO, close: number}, ...] }
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const url = new URL(req.url);
-    const ticker = (url.searchParams.get("ticker") || "").trim().toLowerCase();
-    const d1 = url.searchParams.get("d1") || "";
+    const ticker = (url.searchParams.get("ticker") || "").trim().toUpperCase();
+    const d1 = url.searchParams.get("d1") || ""; // YYYYMMDD
     const d2 = url.searchParams.get("d2") || "";
 
-    if (!ticker || !/^[a-z0-9.\-]+$/.test(ticker)) {
-      return new Response(JSON.stringify({ error: "Invalid ticker" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!ticker || !/^[A-Z0-9.\-=^]+$/.test(ticker)) {
+      return json({ error: "Invalid ticker" }, 400);
     }
     if (!/^\d{8}$/.test(d1) || !/^\d{8}$/.test(d2)) {
-      return new Response(JSON.stringify({ error: "Invalid date range" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ error: "Invalid date range" }, 400);
     }
 
-    const stooqUrl = `https://stooq.com/q/d/l/?s=${encodeURIComponent(ticker)}&d1=${d1}&d2=${d2}&i=d`;
-    const res = await fetch(stooqUrl, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; PortfolioLab/1.0)" },
+    const toUnix = (s: string) => {
+      const y = +s.slice(0, 4), m = +s.slice(4, 6) - 1, d = +s.slice(6, 8);
+      return Math.floor(Date.UTC(y, m, d) / 1000);
+    };
+    const period1 = toUnix(d1);
+    const period2 = toUnix(d2);
+
+    const yahoo = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${period1}&period2=${period2}&interval=1d&events=history`;
+
+    const res = await fetch(yahoo, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        "Accept": "application/json",
+      },
     });
 
     if (!res.ok) {
-      return new Response(
-        JSON.stringify({ error: `Stooq returned ${res.status}` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({ error: `Yahoo returned ${res.status} for "${ticker}"` }, 502);
     }
 
-    const text = await res.text();
-    if (!text || text.toLowerCase().includes("no data") || !text.includes("\n")) {
-      return new Response(
-        JSON.stringify({ error: `No data for "${ticker}"` }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+    const data = await res.json();
+    const result = data?.chart?.result?.[0];
+    const errMsg = data?.chart?.error?.description;
+    if (errMsg) return json({ error: errMsg }, 404);
+    if (!result) return json({ error: `No data for "${ticker}"` }, 404);
+
+    const timestamps: number[] = result.timestamp || [];
+    const closes: (number | null)[] = result.indicators?.adjclose?.[0]?.adjclose
+      || result.indicators?.quote?.[0]?.close
+      || [];
+
+    const points: { date: string; close: number }[] = [];
+    for (let i = 0; i < timestamps.length; i++) {
+      const c = closes[i];
+      if (typeof c === "number" && isFinite(c)) {
+        points.push({
+          date: new Date(timestamps[i] * 1000).toISOString().slice(0, 10),
+          close: c,
+        });
+      }
     }
 
-    return new Response(text, {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "text/csv" },
-    });
+    if (points.length < 2) return json({ error: `Insufficient data for "${ticker}"` }, 404);
+
+    return json({ ticker, points });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ error: msg }, 500);
   }
 });
