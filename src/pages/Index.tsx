@@ -398,6 +398,61 @@ const Index = () => {
                 </div>
               </Card>
             )}
+
+            {assets.length > 0 && (
+              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
+                <h2 className="mb-4 text-lg font-semibold">Annualized standard deviation</h2>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ticker</TableHead>
+                      <TableHead>Std. dev. (annualized)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assets.map((a) => (
+                      <TableRow key={a.ticker}>
+                        <TableCell className="font-mono font-semibold">{a.ticker}</TableCell>
+                        <TableCell>{pct(stdDevs[a.ticker] ?? 0)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
+
+            {covariances && (
+              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
+                <h2 className="mb-4 text-lg font-semibold">Covariance matrix (annualized)</h2>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead></TableHead>
+                        {assets.map((a) => <TableHead key={a.ticker} className="font-mono">{a.ticker}</TableHead>)}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assets.map((a) => (
+                        <TableRow key={a.ticker}>
+                          <TableCell className="font-mono font-semibold">{a.ticker}</TableCell>
+                          {assets.map((b) => {
+                            const v = covariances[a.ticker][b.ticker];
+                            const color = v >= 0 ? "152 76% 50%" : "0 75% 60%";
+                            const intensity = Math.min(1, Math.abs(v) * 4);
+                            return (
+                              <TableCell key={b.ticker} style={{ background: `hsl(${color} / ${intensity * 0.25})` }}>
+                                {v.toFixed(4)}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            )}
           </div>
         )}
 
