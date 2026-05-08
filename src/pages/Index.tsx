@@ -394,23 +394,22 @@ const Index = () => {
             <div className="mb-6 grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="years">Horizon (years)</Label>
-                <Input
+                <NumberInput
                   id="years"
-                  type="number"
+                  value={scenarioYears}
                   min={1}
                   max={50}
-                  value={scenarioYears}
-                  onChange={(e) => setScenarioYears(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                  integer
+                  onCommit={(v) => setScenarioYears(v)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="iv">Initial value (USD)</Label>
-                <Input
+                <NumberInput
                   id="iv"
-                  type="number"
-                  min={1}
                   value={initialValue}
-                  onChange={(e) => setInitialValue(Math.max(1, parseFloat(e.target.value) || 1))}
+                  min={0}
+                  onCommit={(v) => setInitialValue(v)}
                 />
               </div>
               <div className="space-y-2">
