@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -466,6 +466,34 @@ const Index = () => {
 };
 
 interface ScenarioRow { year: number; scenario: Scenario; annual: number; cumulative: number; value: number }
+
+function WeightInput({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [local, setLocal] = useState<string>(String(value));
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setLocal(String(value));
+  }, [value]);
+  return (
+    <Input
+      type="number"
+      min={0}
+      max={100}
+      value={local}
+      className="w-24"
+      onFocus={(e) => { focused.current = true; e.currentTarget.select(); }}
+      onClick={(e) => (e.currentTarget as HTMLInputElement).select()}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        focused.current = false;
+        const n = parseFloat(local);
+        if (isNaN(n)) { setLocal(String(value)); return; }
+        onCommit(n);
+        setLocal(String(value));
+      }}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur(); }}
+    />
+  );
+}
 
 function ScenarioTable({
   title, rows, editable, scenarios, onChange,
