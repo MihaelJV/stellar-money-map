@@ -37,6 +37,18 @@ function mean(arr: number[]) {
   return arr.reduce((a, b) => a + b, 0) / (arr.length || 1);
 }
 
+/** Annualized standard deviation from monthly returns (sample std * sqrt(12)). */
+export function annualizedStdDev(monthly: Map<string, number>): number {
+  const arr = Array.from(monthly.values());
+  const n = arr.length;
+  if (n < 2) return 0;
+  const m = mean(arr);
+  let sum = 0;
+  for (const x of arr) sum += (x - m) * (x - m);
+  const variance = sum / (n - 1); // sample variance
+  return Math.sqrt(variance) * Math.sqrt(12);
+}
+
 export function correlation(a: number[], b: number[]): number {
   const n = Math.min(a.length, b.length);
   if (n < 2) return 0;

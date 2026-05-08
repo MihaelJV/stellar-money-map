@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { fetchHistory, type PricePoint } from "@/lib/stooq";
 import {
-  cagr, monthlyReturns, correlationMatrix,
+  cagr, monthlyReturns, correlationMatrix, annualizedStdDev,
   SCENARIO_MULTIPLIERS, SCENARIO_LABELS, type Scenario,
 } from "@/lib/finance";
 
@@ -68,12 +68,30 @@ const Index = () => {
     [assets],
   );
 
+  const stdDevs = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const a of assets) map[a.ticker] = annualizedStdDev(a.monthly);
+    return map;
+  }, [assets]);
+
   const correlations = useMemo(() => {
     if (assets.length < 2) return null;
     const series: Record<string, Map<string, number>> = {};
     for (const a of assets) series[a.ticker] = a.monthly;
     return correlationMatrix(series);
   }, [assets]);
+
+  const covariances = useMemo(() => {
+    if (!correlations) return null;
+    const out: Record<string, Record<string, number>> = {};
+    for (const a of assets) {
+      out[a.ticker] = {};
+      for (const b of assets) {
+        out[a.ticker][b.ticker] = stdDevs[a.ticker] * stdDevs[b.ticker] * correlations[a.ticker][b.ticker];
+      }
+    }
+    return out;
+  }, [assets, correlations, stdDevs]);
 
   const yearsToDouble = portfolioReturn > 0 ? 70 / (portfolioReturn * 100) : Infinity;
 
@@ -370,6 +388,61 @@ const Index = () => {
                             return (
                               <TableCell key={b.ticker} style={{ background: `hsl(${color} / ${intensity * 0.25})` }}>
                                 {v.toFixed(2)}
+                              </TableCell>
+                            );
+                          })}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            )}
+
+            {assets.length > 0 && (
+              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
+                <h2 className="mb-4 text-lg font-semibold">Annualized standard deviation</h2>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ticker</TableHead>
+                      <TableHead>Std. dev. (annualized)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assets.map((a) => (
+                      <TableRow key={a.ticker}>
+                        <TableCell className="font-mono font-semibold">{a.ticker}</TableCell>
+                        <TableCell>{pct(stdDevs[a.ticker] ?? 0)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
+
+            {covariances && (
+              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
+                <h2 className="mb-4 text-lg font-semibold">Covariance matrix (annualized)</h2>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead></TableHead>
+                        {assets.map((a) => <TableHead key={a.ticker} className="font-mono">{a.ticker}</TableHead>)}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {assets.map((a) => (
+                        <TableRow key={a.ticker}>
+                          <TableCell className="font-mono font-semibold">{a.ticker}</TableCell>
+                          {assets.map((b) => {
+                            const v = covariances[a.ticker][b.ticker];
+                            const color = v >= 0 ? "152 76% 50%" : "0 75% 60%";
+                            const intensity = Math.min(1, Math.abs(v) * 4);
+                            return (
+                              <TableCell key={b.ticker} style={{ background: `hsl(${color} / ${intensity * 0.25})` }}>
+                                {v.toFixed(4)}
                               </TableCell>
                             );
                           })}
