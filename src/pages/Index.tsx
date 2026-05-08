@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -254,14 +254,11 @@ const Index = () => {
                   <div key={a.ticker} className="flex items-center gap-3">
                     <div className="h-3 w-3 rounded-sm" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
                     <span className="w-20 font-mono text-sm font-semibold">{a.ticker}</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
+                    <WeightInput
                       value={a.weight}
-                      onChange={(e) => setWeight(a.ticker, parseFloat(e.target.value) || 0)}
-                      className="w-24"
+                      onCommit={(v) => setWeight(a.ticker, v)}
                     />
+
                     <span className="text-sm text-muted-foreground">%</span>
                     <span className={`ml-auto text-sm font-medium ${a.return >= 0 ? "text-bull" : "text-bear"}`}>
                       {pct(a.return)}
@@ -469,6 +466,34 @@ const Index = () => {
 };
 
 interface ScenarioRow { year: number; scenario: Scenario; annual: number; cumulative: number; value: number }
+
+function WeightInput({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
+  const [local, setLocal] = useState<string>(String(value));
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setLocal(String(value));
+  }, [value]);
+  return (
+    <Input
+      type="number"
+      min={0}
+      max={100}
+      value={local}
+      className="w-24"
+      onFocus={(e) => { focused.current = true; e.currentTarget.select(); }}
+      onClick={(e) => (e.currentTarget as HTMLInputElement).select()}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        focused.current = false;
+        const n = parseFloat(local);
+        if (isNaN(n)) { setLocal(String(value)); return; }
+        onCommit(n);
+        setLocal(String(value));
+      }}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur(); }}
+    />
+  );
+}
 
 function ScenarioTable({
   title, rows, editable, scenarios, onChange,
