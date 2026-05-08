@@ -92,6 +92,56 @@ export function correlationMatrix(
   return out;
 }
 
+/** Invert a square matrix via Gauss-Jordan. Returns null if singular. */
+export function invertMatrix(m: number[][]): number[][] | null {
+  const n = m.length;
+  if (n === 0) return null;
+  const a = m.map((row, i) => [
+    ...row,
+    ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
+  ]);
+  for (let i = 0; i < n; i++) {
+    let pivot = i;
+    for (let r = i + 1; r < n; r++) {
+      if (Math.abs(a[r][i]) > Math.abs(a[pivot][i])) pivot = r;
+    }
+    if (Math.abs(a[pivot][i]) < 1e-12) return null;
+    [a[i], a[pivot]] = [a[pivot], a[i]];
+    const div = a[i][i];
+    for (let j = 0; j < 2 * n; j++) a[i][j] /= div;
+    for (let r = 0; r < n; r++) {
+      if (r === i) continue;
+      const f = a[r][i];
+      for (let j = 0; j < 2 * n; j++) a[r][j] -= f * a[i][j];
+    }
+  }
+  return a.map((row) => row.slice(n));
+}
+
+/**
+ * Tangency (max-Sharpe) portfolio weights.
+ *   w ∝ Σ⁻¹ (μ − rf·1), normalized so Σwᵢ = 1.
+ * Returns null when the covariance matrix is singular or weights sum to ~0.
+ */
+export function tangencyWeights(
+  mu: number[],
+  cov: number[][],
+  rf: number,
+): number[] | null {
+  const n = mu.length;
+  if (n === 0 || cov.length !== n) return null;
+  const inv = invertMatrix(cov);
+  if (!inv) return null;
+  const excess = mu.map((x) => x - rf);
+  const z = Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) z[i] += inv[i][j] * excess[j];
+  }
+  const s = z.reduce((a, b) => a + b, 0);
+  if (Math.abs(s) < 1e-12) return null;
+  return z.map((x) => x / s);
+}
+
 export const SCENARIO_MULTIPLIERS = {
   boom: 1.2,
   bullish: 1,
