@@ -347,6 +347,12 @@ const Index = () => {
                     />
 
                     <span className="text-sm text-muted-foreground">%</span>
+                    <span className="ml-2 w-28 text-right text-xs text-muted-foreground" title="Tangency (max-Sharpe) suggestion">
+                      Opt:{" "}
+                      <span className="font-medium text-primary">
+                        {tangency ? `${tangency[i].toFixed(1)}%` : "—"}
+                      </span>
+                    </span>
                     <span className={`ml-auto text-sm font-medium ${a.return >= 0 ? "text-bull" : "text-bear"}`}>
                       {pct(a.return)}
                     </span>
@@ -367,6 +373,41 @@ const Index = () => {
                     {pct(portfolioReturn)}
                   </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Risk-free return <span className="text-xs">({rfLabel})</span>
+                  </span>
+                  <span className="font-semibold text-primary">
+                    {riskFreeRate === null ? "—" : pct(riskFreeRate)}
+                  </span>
+                </div>
+                <HoverCard openDelay={150}>
+                  <HoverCardTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      className="mt-2 w-full"
+                      onClick={applyOptimise}
+                      disabled={!tangency}
+                    >
+                      Optimise
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80 text-xs leading-relaxed">
+                    <p className="mb-1 font-semibold">1. Tangency Portfolio (Maximum Sharpe Ratio)</p>
+                    <p className="mb-2 text-muted-foreground">
+                      Finds the point on the Efficient Frontier where return per
+                      unit of risk is highest.
+                    </p>
+                    <p className="mb-1">
+                      Goal: maximize <span className="font-mono">(E[Rₚ] − R_f) / σₚ</span>
+                    </p>
+                    <p className="text-muted-foreground">
+                      Closed form: w ∝ Σ⁻¹ (μ − R_f·1), then normalized so the
+                      weights sum to 100%. Negative (short) weights are clipped
+                      to 0 and renormalized.
+                    </p>
+                  </HoverCardContent>
+                </HoverCard>
               </div>
             </Card>
 
