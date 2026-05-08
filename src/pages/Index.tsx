@@ -94,6 +94,24 @@ const Index = () => {
     return out;
   }, [assets, correlations, stdDevs]);
 
+  // Weighted portfolio standard deviation: sqrt(wᵀ Σ w). Falls back to
+  // weighted single-asset std dev when only one ticker is loaded.
+  const portfolioStdDev = useMemo(() => {
+    if (assets.length === 0) return 0;
+    if (assets.length === 1) {
+      return (assets[0].weight / 100) * (stdDevs[assets[0].ticker] ?? 0);
+    }
+    if (!covariances) return 0;
+    const w = assets.map((a) => a.weight / 100);
+    let v = 0;
+    for (let i = 0; i < assets.length; i++) {
+      for (let j = 0; j < assets.length; j++) {
+        v += w[i] * w[j] * covariances[assets[i].ticker][assets[j].ticker];
+      }
+    }
+    return Math.sqrt(Math.max(0, v));
+  }, [assets, covariances, stdDevs]);
+
   // Risk-free proxy ticker by horizon
   const rfTicker = useMemo(() => {
     if (scenarioYears < 1) return "^IRX";   // 13-week T-bill yield
