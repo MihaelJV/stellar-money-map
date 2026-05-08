@@ -157,6 +157,33 @@ const Index = () => {
     return clipped.map((x) => (x / s) * 100);
   }, [assets, covariances, riskFreeRate]);
 
+  // Market monthly returns (S&P 500) for beta calculation
+  const [marketMonthly, setMarketMonthly] = useState<Map<string, number> | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const points = await fetchHistory("^GSPC", new Date(startDate), new Date(endDate));
+        if (!cancelled) setMarketMonthly(monthlyReturns(points));
+      } catch {
+        if (!cancelled) setMarketMonthly(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [startDate, endDate]);
+
+  const betas = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (!marketMonthly) return map;
+    for (const a of assets) map[a.ticker] = beta(a.monthly, marketMonthly);
+    return map;
+  }, [assets, marketMonthly]);
+
+  const portfolioBeta = useMemo(
+    () => assets.reduce((s, a) => s + (betas[a.ticker] ?? 0) * (a.weight / 100), 0),
+    [assets, betas],
+  );
+
   const applyOptimise = () => {
     if (!tangency) {
       toast.error("Cannot compute optimal weights (need ≥ 2 assets and a risk-free rate).");
