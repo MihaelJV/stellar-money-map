@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Loader2, Plus, X, TrendingUp, Activity, Sparkles } from "lucide-react";
+import { Loader2, Plus, X, TrendingUp, Activity, Sparkles, Info } from "lucide-react";
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
@@ -93,6 +93,24 @@ const Index = () => {
     }
     return out;
   }, [assets, correlations, stdDevs]);
+
+  // Weighted portfolio standard deviation: sqrt(wᵀ Σ w). Falls back to
+  // weighted single-asset std dev when only one ticker is loaded.
+  const portfolioStdDev = useMemo(() => {
+    if (assets.length === 0) return 0;
+    if (assets.length === 1) {
+      return (assets[0].weight / 100) * (stdDevs[assets[0].ticker] ?? 0);
+    }
+    if (!covariances) return 0;
+    const w = assets.map((a) => a.weight / 100);
+    let v = 0;
+    for (let i = 0; i < assets.length; i++) {
+      for (let j = 0; j < assets.length; j++) {
+        v += w[i] * w[j] * covariances[assets[i].ticker][assets[j].ticker];
+      }
+    }
+    return Math.sqrt(Math.max(0, v));
+  }, [assets, covariances, stdDevs]);
 
   // Risk-free proxy ticker by horizon
   const rfTicker = useMemo(() => {
@@ -435,6 +453,44 @@ const Index = () => {
                     <Legend />
                   </PieChart>
                 </ResponsiveContainer>
+              </div>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  Portfolio std. deviation (risk)
+                  <HoverCard openDelay={150}>
+                    <HoverCardTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="What does portfolio standard deviation mean?"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80 text-xs leading-relaxed">
+                      <p className="mb-2">
+                        Portfolio standard deviation measures the typical
+                        year-to-year swing of the whole portfolio's return
+                        around its average. Higher = more volatile = riskier.
+                      </p>
+                      <p className="mb-2 text-muted-foreground">
+                        Computed as <span className="font-mono">σₚ = √(wᵀ Σ w)</span>,
+                        where <span className="font-mono">Σ</span> is the
+                        annualized covariance matrix and{" "}
+                        <span className="font-mono">w</span> the weight vector.
+                      </p>
+                      <p className="text-muted-foreground">
+                        Minimising σₚ via diversification (combining assets
+                        whose returns are not perfectly correlated) lowers
+                        overall risk without necessarily lowering expected
+                        return — the core idea behind modern portfolio theory.
+                      </p>
+                    </HoverCardContent>
+                  </HoverCard>
+                </span>
+                <span className="font-semibold text-primary">
+                  {pct(portfolioStdDev)}
+                </span>
               </div>
             </Card>
 
