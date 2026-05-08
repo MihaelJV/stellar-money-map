@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { fetchHistory, type PricePoint } from "@/lib/stooq";
 import {
-  cagr, monthlyReturns, correlationMatrix, annualizedStdDev, tangencyWeights,
+  cagr, monthlyReturns, correlationMatrix, annualizedStdDev, tangencyWeights, beta,
   SCENARIO_MULTIPLIERS, SCENARIO_LABELS, type Scenario,
 } from "@/lib/finance";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
