@@ -13,9 +13,10 @@ import {
 } from "recharts";
 import { fetchHistory, type PricePoint } from "@/lib/stooq";
 import {
-  cagr, monthlyReturns, correlationMatrix, annualizedStdDev,
+  cagr, monthlyReturns, correlationMatrix, annualizedStdDev, tangencyWeights,
   SCENARIO_MULTIPLIERS, SCENARIO_LABELS, type Scenario,
 } from "@/lib/finance";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 interface Asset {
   ticker: string;
@@ -92,6 +93,60 @@ const Index = () => {
     }
     return out;
   }, [assets, correlations, stdDevs]);
+
+  // Risk-free proxy ticker by horizon
+  const rfTicker = useMemo(() => {
+    if (scenarioYears < 1) return "^IRX";   // 13-week T-bill yield
+    if (scenarioYears <= 7) return "^FVX";  // 5-year Treasury yield
+    if (scenarioYears <= 10) return "^TNX"; // 10-year Treasury yield
+    return "^TYX";                          // 30-year Treasury yield
+  }, [scenarioYears]);
+
+  const rfLabel = useMemo(() => {
+    if (scenarioYears < 1) return "3-month T-Bill (^IRX)";
+    if (scenarioYears <= 7) return "5-year Treasury Note (^FVX)";
+    if (scenarioYears <= 10) return "10-year Treasury Note (^TNX)";
+    return "30-year Treasury Bond (^TYX)";
+  }, [scenarioYears]);
+
+  const [riskFreeRate, setRiskFreeRate] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const points = await fetchHistory(rfTicker, new Date(startDate), new Date(endDate));
+        if (!cancelled && points.length > 0) {
+          // Yahoo treasury yield indices quote yield in percent
+          setRiskFreeRate(points[points.length - 1].close / 100);
+        }
+      } catch {
+        if (!cancelled) setRiskFreeRate(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rfTicker, startDate, endDate]);
+
+  // Tangency (max-Sharpe) weights — long-only via clip + renormalize
+  const tangency = useMemo(() => {
+    if (!covariances || riskFreeRate === null || assets.length < 2) return null;
+    const mu = assets.map((a) => a.return);
+    const cov = assets.map((a) => assets.map((b) => covariances[a.ticker][b.ticker]));
+    const w = tangencyWeights(mu, cov, riskFreeRate);
+    if (!w) return null;
+    const clipped = w.map((x) => Math.max(0, x));
+    const s = clipped.reduce((a, b) => a + b, 0);
+    if (s <= 1e-9) return null;
+    return clipped.map((x) => (x / s) * 100);
+  }, [assets, covariances, riskFreeRate]);
+
+  const applyOptimise = () => {
+    if (!tangency) {
+      toast.error("Cannot compute optimal weights (need ≥ 2 assets and a risk-free rate).");
+      return;
+    }
+    setAssets((prev) => prev.map((a, i) => ({ ...a, weight: tangency[i] ?? a.weight })));
+    toast.success("Applied tangency-portfolio weights");
+  };
 
   const yearsToDouble = portfolioReturn > 0 ? 70 / (portfolioReturn * 100) : Infinity;
 
@@ -292,6 +347,12 @@ const Index = () => {
                     />
 
                     <span className="text-sm text-muted-foreground">%</span>
+                    <span className="ml-2 w-28 text-right text-xs text-muted-foreground" title="Tangency (max-Sharpe) suggestion">
+                      Opt:{" "}
+                      <span className="font-medium text-primary">
+                        {tangency ? `${tangency[i].toFixed(1)}%` : "—"}
+                      </span>
+                    </span>
                     <span className={`ml-auto text-sm font-medium ${a.return >= 0 ? "text-bull" : "text-bear"}`}>
                       {pct(a.return)}
                     </span>
@@ -312,6 +373,41 @@ const Index = () => {
                     {pct(portfolioReturn)}
                   </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Risk-free return <span className="text-xs">({rfLabel})</span>
+                  </span>
+                  <span className="font-semibold text-primary">
+                    {riskFreeRate === null ? "—" : pct(riskFreeRate)}
+                  </span>
+                </div>
+                <HoverCard openDelay={150}>
+                  <HoverCardTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      className="mt-2 w-full"
+                      onClick={applyOptimise}
+                      disabled={!tangency}
+                    >
+                      Optimise
+                    </Button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-80 text-xs leading-relaxed">
+                    <p className="mb-1 font-semibold">1. Tangency Portfolio (Maximum Sharpe Ratio)</p>
+                    <p className="mb-2 text-muted-foreground">
+                      Finds the point on the Efficient Frontier where return per
+                      unit of risk is highest.
+                    </p>
+                    <p className="mb-1">
+                      Goal: maximize <span className="font-mono">(E[Rₚ] − R_f) / σₚ</span>
+                    </p>
+                    <p className="text-muted-foreground">
+                      Closed form: w ∝ Σ⁻¹ (μ − R_f·1), then normalized so the
+                      weights sum to 100%. Negative (short) weights are clipped
+                      to 0 and renormalized.
+                    </p>
+                  </HoverCardContent>
+                </HoverCard>
               </div>
             </Card>
 
