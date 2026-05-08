@@ -113,6 +113,20 @@ const Index = () => {
         toast.error("Weight must be between 0 and 100");
         return prev;
       }
+      // Special case: editing the last asset adjusts the one immediately above
+      if (idx === prev.length - 1 && prev.length > 1) {
+        const othersAboveSum = prev.slice(0, idx - 1).reduce((s, a) => s + a.weight, 0);
+        const adjusted = 100 - othersAboveSum - w;
+        if (adjusted < -0.0001) {
+          toast.error("Weights above + this entry exceed 100%");
+          return prev;
+        }
+        return prev.map((a, i) => {
+          if (i === idx) return { ...a, weight: w };
+          if (i === idx - 1) return { ...a, weight: Math.max(0, adjusted) };
+          return a;
+        });
+      }
       const aboveSum = prev.slice(0, idx).reduce((s, a) => s + a.weight, 0);
       const remaining = 100 - aboveSum - w;
       if (remaining < -0.0001) {
@@ -380,23 +394,22 @@ const Index = () => {
             <div className="mb-6 grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="years">Horizon (years)</Label>
-                <Input
+                <NumberInput
                   id="years"
-                  type="number"
+                  value={scenarioYears}
                   min={1}
                   max={50}
-                  value={scenarioYears}
-                  onChange={(e) => setScenarioYears(Math.max(1, Math.min(50, parseInt(e.target.value) || 1)))}
+                  integer
+                  onCommit={(v) => setScenarioYears(v)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="iv">Initial value (USD)</Label>
-                <Input
+                <NumberInput
                   id="iv"
-                  type="number"
-                  min={1}
                   value={initialValue}
-                  onChange={(e) => setInitialValue(Math.max(1, parseFloat(e.target.value) || 1))}
+                  min={0}
+                  onCommit={(v) => setInitialValue(v)}
                 />
               </div>
               <div className="space-y-2">
@@ -466,6 +479,53 @@ const Index = () => {
 };
 
 interface ScenarioRow { year: number; scenario: Scenario; annual: number; cumulative: number; value: number }
+
+function NumberInput({
+  id, value, min, max, integer, onCommit,
+}: {
+  id?: string;
+  value: number;
+  min?: number;
+  max?: number;
+  integer?: boolean;
+  onCommit: (v: number) => void;
+}) {
+  const [local, setLocal] = useState<string>(String(value));
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setLocal(String(value));
+  }, [value]);
+  return (
+    <Input
+      id={id}
+      type="number"
+      min={min}
+      max={max}
+      value={local}
+      onFocus={(e) => { focused.current = true; e.currentTarget.select(); }}
+      onClick={(e) => (e.currentTarget as HTMLInputElement).select()}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        focused.current = false;
+        let n = integer ? parseInt(local) : parseFloat(local);
+        if (isNaN(n)) { toast.error("Please enter a valid number"); setLocal(String(value)); return; }
+        if (n < 0 || (min !== undefined && n < min)) {
+          toast.error(`Value must be ≥ ${min ?? 0}`);
+          setLocal(String(value));
+          return;
+        }
+        if (max !== undefined && n > max) {
+          toast.error(`Value must be ≤ ${max}`);
+          setLocal(String(value));
+          return;
+        }
+        onCommit(n);
+        setLocal(String(value));
+      }}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur(); }}
+    />
+  );
+}
 
 function WeightInput({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
   const [local, setLocal] = useState<string>(String(value));
