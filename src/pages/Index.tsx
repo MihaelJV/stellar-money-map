@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { fetchHistory, type PricePoint } from "@/lib/stooq";
 import {
-  cagr, monthlyReturns, correlationMatrix,
+  cagr, monthlyReturns, correlationMatrix, annualizedStdDev,
   SCENARIO_MULTIPLIERS, SCENARIO_LABELS, type Scenario,
 } from "@/lib/finance";
 
