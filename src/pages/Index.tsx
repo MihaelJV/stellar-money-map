@@ -632,6 +632,63 @@ const Index = () => {
                 </div>
               </Card>
             )}
+
+            {assets.length > 0 && (
+              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
+                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                  Beta vs market (S&amp;P 500)
+                  <HoverCard openDelay={150}>
+                    <HoverCardTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="What is beta?"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80 text-xs leading-relaxed">
+                      <p className="mb-2">
+                        Beta (β) measures an asset's market risk — how much its
+                        returns move relative to the broad market (S&amp;P 500).
+                      </p>
+                      <p className="mb-2 text-muted-foreground">
+                        β = Cov(R<sub>asset</sub>, R<sub>market</sub>) / Var(R<sub>market</sub>),
+                        computed from aligned monthly returns.
+                      </p>
+                      <p className="text-muted-foreground">
+                        β = 1: moves with the market. β &gt; 1: more volatile
+                        than market. β &lt; 1: less volatile. β &lt; 0: tends
+                        to move opposite to the market. Portfolio β is the
+                        weighted average of asset betas.
+                      </p>
+                    </HoverCardContent>
+                  </HoverCard>
+                </h2>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Ticker</TableHead>
+                      <TableHead>Beta (β)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {assets.map((a) => (
+                      <TableRow key={a.ticker}>
+                        <TableCell className="font-mono font-semibold">{a.ticker}</TableCell>
+                        <TableCell>{marketMonthly ? (betas[a.ticker] ?? 0).toFixed(3) : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell className="font-semibold">Portfolio (weighted)</TableCell>
+                      <TableCell className="font-semibold text-primary">
+                        {marketMonthly ? portfolioBeta.toFixed(3) : "—"}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
           </div>
         )}
 
