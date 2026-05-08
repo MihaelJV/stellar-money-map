@@ -254,14 +254,11 @@ const Index = () => {
                   <div key={a.ticker} className="flex items-center gap-3">
                     <div className="h-3 w-3 rounded-sm" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
                     <span className="w-20 font-mono text-sm font-semibold">{a.ticker}</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
+                    <WeightInput
                       value={a.weight}
-                      onChange={(e) => setWeight(a.ticker, parseFloat(e.target.value) || 0)}
-                      className="w-24"
+                      onCommit={(v) => setWeight(a.ticker, v)}
                     />
+
                     <span className="text-sm text-muted-foreground">%</span>
                     <span className={`ml-auto text-sm font-medium ${a.return >= 0 ? "text-bull" : "text-bear"}`}>
                       {pct(a.return)}
