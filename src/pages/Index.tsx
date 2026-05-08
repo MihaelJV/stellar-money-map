@@ -94,6 +94,60 @@ const Index = () => {
     return out;
   }, [assets, correlations, stdDevs]);
 
+  // Risk-free proxy ticker by horizon
+  const rfTicker = useMemo(() => {
+    if (scenarioYears < 1) return "^IRX";   // 13-week T-bill yield
+    if (scenarioYears <= 7) return "^FVX";  // 5-year Treasury yield
+    if (scenarioYears <= 10) return "^TNX"; // 10-year Treasury yield
+    return "^TYX";                          // 30-year Treasury yield
+  }, [scenarioYears]);
+
+  const rfLabel = useMemo(() => {
+    if (scenarioYears < 1) return "3-month T-Bill (^IRX)";
+    if (scenarioYears <= 7) return "5-year Treasury Note (^FVX)";
+    if (scenarioYears <= 10) return "10-year Treasury Note (^TNX)";
+    return "30-year Treasury Bond (^TYX)";
+  }, [scenarioYears]);
+
+  const [riskFreeRate, setRiskFreeRate] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const points = await fetchHistory(rfTicker, new Date(startDate), new Date(endDate));
+        if (!cancelled && points.length > 0) {
+          // Yahoo treasury yield indices quote yield in percent
+          setRiskFreeRate(points[points.length - 1].close / 100);
+        }
+      } catch {
+        if (!cancelled) setRiskFreeRate(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [rfTicker, startDate, endDate]);
+
+  // Tangency (max-Sharpe) weights — long-only via clip + renormalize
+  const tangency = useMemo(() => {
+    if (!covariances || riskFreeRate === null || assets.length < 2) return null;
+    const mu = assets.map((a) => a.return);
+    const cov = assets.map((a) => assets.map((b) => covariances[a.ticker][b.ticker]));
+    const w = tangencyWeights(mu, cov, riskFreeRate);
+    if (!w) return null;
+    const clipped = w.map((x) => Math.max(0, x));
+    const s = clipped.reduce((a, b) => a + b, 0);
+    if (s <= 1e-9) return null;
+    return clipped.map((x) => (x / s) * 100);
+  }, [assets, covariances, riskFreeRate]);
+
+  const applyOptimise = () => {
+    if (!tangency) {
+      toast.error("Cannot compute optimal weights (need ≥ 2 assets and a risk-free rate).");
+      return;
+    }
+    setAssets((prev) => prev.map((a, i) => ({ ...a, weight: tangency[i] ?? a.weight })));
+    toast.success("Applied tangency-portfolio weights");
+  };
+
   const yearsToDouble = portfolioReturn > 0 ? 70 / (portfolioReturn * 100) : Infinity;
 
   const addTicker = useCallback(async () => {
