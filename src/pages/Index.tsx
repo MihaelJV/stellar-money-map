@@ -454,6 +454,44 @@ const Index = () => {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+                <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  Portfolio std. deviation (risk)
+                  <HoverCard openDelay={150}>
+                    <HoverCardTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="What does portfolio standard deviation mean?"
+                        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                      </button>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80 text-xs leading-relaxed">
+                      <p className="mb-2">
+                        Portfolio standard deviation measures the typical
+                        year-to-year swing of the whole portfolio's return
+                        around its average. Higher = more volatile = riskier.
+                      </p>
+                      <p className="mb-2 text-muted-foreground">
+                        Computed as <span className="font-mono">σₚ = √(wᵀ Σ w)</span>,
+                        where <span className="font-mono">Σ</span> is the
+                        annualized covariance matrix and{" "}
+                        <span className="font-mono">w</span> the weight vector.
+                      </p>
+                      <p className="text-muted-foreground">
+                        Minimising σₚ via diversification (combining assets
+                        whose returns are not perfectly correlated) lowers
+                        overall risk without necessarily lowering expected
+                        return — the core idea behind modern portfolio theory.
+                      </p>
+                    </HoverCardContent>
+                  </HoverCard>
+                </span>
+                <span className="font-semibold text-primary">
+                  {pct(portfolioStdDev)}
+                </span>
+              </div>
             </Card>
 
             <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
