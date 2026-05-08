@@ -480,6 +480,53 @@ const Index = () => {
 
 interface ScenarioRow { year: number; scenario: Scenario; annual: number; cumulative: number; value: number }
 
+function NumberInput({
+  id, value, min, max, integer, onCommit,
+}: {
+  id?: string;
+  value: number;
+  min?: number;
+  max?: number;
+  integer?: boolean;
+  onCommit: (v: number) => void;
+}) {
+  const [local, setLocal] = useState<string>(String(value));
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setLocal(String(value));
+  }, [value]);
+  return (
+    <Input
+      id={id}
+      type="number"
+      min={min}
+      max={max}
+      value={local}
+      onFocus={(e) => { focused.current = true; e.currentTarget.select(); }}
+      onClick={(e) => (e.currentTarget as HTMLInputElement).select()}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={() => {
+        focused.current = false;
+        let n = integer ? parseInt(local) : parseFloat(local);
+        if (isNaN(n)) { toast.error("Please enter a valid number"); setLocal(String(value)); return; }
+        if (n < 0 || (min !== undefined && n < min)) {
+          toast.error(`Value must be ≥ ${min ?? 0}`);
+          setLocal(String(value));
+          return;
+        }
+        if (max !== undefined && n > max) {
+          toast.error(`Value must be ≤ ${max}`);
+          setLocal(String(value));
+          return;
+        }
+        onCommit(n);
+        setLocal(String(value));
+      }}
+      onKeyDown={(e) => { if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur(); }}
+    />
+  );
+}
+
 function WeightInput({ value, onCommit }: { value: number; onCommit: (v: number) => void }) {
   const [local, setLocal] = useState<string>(String(value));
   const focused = useRef(false);
