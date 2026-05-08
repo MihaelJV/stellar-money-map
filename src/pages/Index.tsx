@@ -89,9 +89,11 @@ const Index = () => {
       const points: PricePoint[] = await fetchHistory(raw, new Date(startDate), new Date(endDate));
       const r = cagr(points);
       const monthly = monthlyReturns(points);
-      const remaining = Math.max(0, 100 - totalWeight);
-      const suggested = assets.length === 0 ? 100 : Math.min(remaining, Math.floor(100 / (assets.length + 1)));
-      setAssets((prev) => [...prev, { ticker: raw, weight: suggested, return: r, monthly }]);
+      setAssets((prev) => {
+        const next = [...prev, { ticker: raw, weight: 0, return: r, monthly }];
+        const equal = 100 / next.length;
+        return next.map((a) => ({ ...a, weight: equal }));
+      });
       setTickerInput("");
       toast.success(`Added ${raw} — CAGR ${pct(r)}`);
     } catch (e) {
@@ -104,7 +106,27 @@ const Index = () => {
   const removeAsset = (t: string) => setAssets((prev) => prev.filter((a) => a.ticker !== t));
 
   const setWeight = (t: string, w: number) => {
-    setAssets((prev) => prev.map((a) => a.ticker === t ? { ...a, weight: Math.max(0, Math.min(100, w)) } : a));
+    setAssets((prev) => {
+      const idx = prev.findIndex((a) => a.ticker === t);
+      if (idx === -1) return prev;
+      if (w < 0 || w > 100) {
+        toast.error("Weight must be between 0 and 100");
+        return prev;
+      }
+      const aboveSum = prev.slice(0, idx).reduce((s, a) => s + a.weight, 0);
+      const remaining = 100 - aboveSum - w;
+      if (remaining < -0.0001) {
+        toast.error("Weights above + this entry exceed 100%");
+        return prev;
+      }
+      const belowCount = prev.length - idx - 1;
+      const each = belowCount > 0 ? Math.max(0, remaining) / belowCount : 0;
+      return prev.map((a, i) => {
+        if (i === idx) return { ...a, weight: w };
+        if (i < idx) return a;
+        return { ...a, weight: each };
+      });
+    });
   };
 
   const refetchAll = useCallback(async () => {
