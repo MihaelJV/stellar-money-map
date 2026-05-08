@@ -68,12 +68,30 @@ const Index = () => {
     [assets],
   );
 
+  const stdDevs = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const a of assets) map[a.ticker] = annualizedStdDev(a.monthly);
+    return map;
+  }, [assets]);
+
   const correlations = useMemo(() => {
     if (assets.length < 2) return null;
     const series: Record<string, Map<string, number>> = {};
     for (const a of assets) series[a.ticker] = a.monthly;
     return correlationMatrix(series);
   }, [assets]);
+
+  const covariances = useMemo(() => {
+    if (!correlations) return null;
+    const out: Record<string, Record<string, number>> = {};
+    for (const a of assets) {
+      out[a.ticker] = {};
+      for (const b of assets) {
+        out[a.ticker][b.ticker] = stdDevs[a.ticker] * stdDevs[b.ticker] * correlations[a.ticker][b.ticker];
+      }
+    }
+    return out;
+  }, [assets, correlations, stdDevs]);
 
   const yearsToDouble = portfolioReturn > 0 ? 70 / (portfolioReturn * 100) : Infinity;
 
