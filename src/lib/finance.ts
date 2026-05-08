@@ -49,6 +49,26 @@ export function annualizedStdDev(monthly: Map<string, number>): number {
   return Math.sqrt(variance) * Math.sqrt(12);
 }
 
+/** Beta of asset vs market from aligned monthly returns: cov/var. */
+export function beta(
+  asset: Map<string, number>,
+  market: Map<string, number>,
+): number {
+  const common: string[] = [];
+  for (const k of asset.keys()) if (market.has(k)) common.push(k);
+  if (common.length < 2) return 0;
+  const a = common.map((k) => asset.get(k)!);
+  const b = common.map((k) => market.get(k)!);
+  const ma = mean(a);
+  const mb = mean(b);
+  let cov = 0, varM = 0;
+  for (let i = 0; i < a.length; i++) {
+    cov += (a[i] - ma) * (b[i] - mb);
+    varM += (b[i] - mb) * (b[i] - mb);
+  }
+  return varM === 0 ? 0 : cov / varM;
+}
+
 export function correlation(a: number[], b: number[]): number {
   const n = Math.min(a.length, b.length);
   if (n < 2) return 0;
