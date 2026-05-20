@@ -668,7 +668,9 @@ const Index = () => {
                   <TableRow>
                     <TableHead>Ticker</TableHead>
                     <TableHead>Weight</TableHead>
-                    <TableHead>Avg annual return (CAGR)</TableHead>
+                    <TableHead>CAGR (geometric)</TableHead>
+                    <TableHead>Arithmetic μ ≈ CAGR + σ²/2</TableHead>
+                    <TableHead>Blended μ (used by optimiser)</TableHead>
                     <TableHead>Period</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -678,6 +680,12 @@ const Index = () => {
                       <TableCell className="font-mono font-semibold">{a.ticker}</TableCell>
                       <TableCell>{a.weight}%</TableCell>
                       <TableCell className={a.return >= 0 ? "text-bull" : "text-bear"}>{pct(a.return)}</TableCell>
+                      <TableCell className={(arithReturns[a.ticker] ?? 0) >= 0 ? "text-bull" : "text-bear"}>
+                        {pct(arithReturns[a.ticker] ?? 0)}
+                      </TableCell>
+                      <TableCell className={(blendedReturns[a.ticker] ?? 0) >= 0 ? "text-bull" : "text-bear"}>
+                        {pct(blendedReturns[a.ticker] ?? 0)}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{startDate} → {endDate}</TableCell>
                     </TableRow>
                   ))}
