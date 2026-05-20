@@ -165,20 +165,46 @@ const Index = () => {
     return clipped.map((x) => (x / s) * 100);
   }, [assets, covariances, riskFreeRate]);
 
-  // Market monthly returns (S&P 500) for beta calculation
+  // Market monthly returns + CAGR (S&P 500) — used for beta and the shrinkage prior
   const [marketMonthly, setMarketMonthly] = useState<Map<string, number> | null>(null);
+  const [marketCagr, setMarketCagr] = useState<number>(0);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const points = await fetchHistory("^GSPC", new Date(startDate), new Date(endDate));
-        if (!cancelled) setMarketMonthly(monthlyReturns(points));
+        if (!cancelled) {
+          setMarketMonthly(monthlyReturns(points));
+          setMarketCagr(cagr(points));
+        }
       } catch {
-        if (!cancelled) setMarketMonthly(null);
+        if (!cancelled) { setMarketMonthly(null); setMarketCagr(0); }
       }
     })();
     return () => { cancelled = true; };
   }, [startDate, endDate]);
+
+  // Arithmetic expected return per asset ≈ CAGR + σ²/2
+  const arithReturns = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const a of assets) map[a.ticker] = arithmeticExpected(a.return, stdDevs[a.ticker] ?? 0);
+    return map;
+  }, [assets, stdDevs]);
+
+  // Shrinkage toward market prior: blend arithmetic estimate with market baseline
+  const blendedReturns = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const a of assets) {
+      map[a.ticker] = shrinkage * (arithReturns[a.ticker] ?? 0) + (1 - shrinkage) * marketCagr;
+    }
+    return map;
+  }, [assets, arithReturns, shrinkage, marketCagr]);
+
+  // Portfolio expected return (blended arithmetic, used for optimizer & display)
+  const portfolioReturn = useMemo(
+    () => assets.reduce((s, a) => s + (blendedReturns[a.ticker] ?? 0) * (a.weight / 100), 0),
+    [assets, blendedReturns],
+  );
 
   const betas = useMemo(() => {
     const map: Record<string, number> = {};
