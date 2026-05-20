@@ -50,6 +50,12 @@ const Index = () => {
   const [initialValue, setInitialValue] = useState(10000);
   const [colorfulScenarios, setColorfulScenarios] = useState<Scenario[]>([]);
 
+  // Advanced optimizer settings
+  const [maxAlloc, setMaxAlloc] = useState(35);          // % cap per asset
+  const [allowShort, setAllowShort] = useState(false);   // allow negative weights
+  const [shrinkage, setShrinkage] = useState(0.7);       // weight on historical estimate (0–1)
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   // keep colorful scenarios sized
   useEffect(() => {
     setColorfulScenarios((prev) => {
@@ -65,7 +71,8 @@ const Index = () => {
     [assets],
   );
 
-  const portfolioReturn = useMemo(
+  // Portfolio CAGR (geometric, used for compounding scenarios)
+  const portfolioCagr = useMemo(
     () => assets.reduce((s, a) => s + a.return * (a.weight / 100), 0),
     [assets],
   );
