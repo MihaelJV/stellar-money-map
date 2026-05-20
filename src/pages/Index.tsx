@@ -226,7 +226,7 @@ const Index = () => {
     toast.success("Applied tangency-portfolio weights");
   };
 
-  const yearsToDouble = portfolioReturn > 0 ? 70 / (portfolioReturn * 100) : Infinity;
+  const yearsToDouble = portfolioCagr > 0 ? 70 / (portfolioCagr * 100) : Infinity;
 
   const addTicker = useCallback(async () => {
     const raw = tickerInput.trim().toUpperCase();
