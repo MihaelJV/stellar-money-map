@@ -431,7 +431,7 @@ const Index = () => {
                         {tangency ? `${tangency[i].toFixed(1)}%` : "—"}
                       </span>
                     </span>
-                    <span className={`ml-auto text-sm font-medium ${a.return >= 0 ? "text-bull" : "text-bear"}`}>
+                    <span className={`ml-auto text-sm font-medium ${a.return >= 0 ? "text-bull" : "text-bear"}`} title="CAGR (geometric)">
                       {pct(a.return)}
                     </span>
                     <Button size="icon" variant="ghost" onClick={() => removeAsset(a.ticker)}>
@@ -446,9 +446,43 @@ const Index = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Expected return (weighted)</span>
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    Expected return (weighted, arithmetic)
+                    <HoverCard openDelay={150}>
+                      <HoverCardTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="How is expected return computed?"
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 text-xs leading-relaxed">
+                        <p className="mb-2">
+                          <span className="font-semibold">Geometric (CAGR)</span> is what compounds your money;{" "}
+                          <span className="font-semibold">arithmetic expected return</span>{" "}
+                          is the per-period average used in mean-variance optimisation.
+                        </p>
+                        <p className="mb-2 text-muted-foreground">
+                          We approximate it as <span className="font-mono">μ ≈ CAGR + σ²/2</span> (volatility-adjusted),
+                          then shrink toward the market baseline (S&amp;P 500 CAGR ={" "}
+                          <span className="font-mono">{pct(marketCagr)}</span>):
+                        </p>
+                        <p className="font-mono text-muted-foreground">
+                          μ_blend = {shrinkage.toFixed(2)}·μ + {(1 - shrinkage).toFixed(2)}·μ_market
+                        </p>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </span>
                   <span className={`font-semibold ${portfolioReturn >= 0 ? "text-bull" : "text-bear"}`}>
                     {pct(portfolioReturn)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Portfolio CAGR (geometric)</span>
+                  <span className={`font-semibold ${portfolioCagr >= 0 ? "text-bull" : "text-bear"}`}>
+                    {pct(portfolioCagr)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -459,6 +493,73 @@ const Index = () => {
                     {riskFreeRate === null ? "—" : pct(riskFreeRate)}
                   </span>
                 </div>
+
+                {/* Advanced optimiser settings */}
+                <div className="border-t border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setAdvancedOpen((v) => !v)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {advancedOpen ? "▾" : "▸"} Advanced optimiser settings
+                  </button>
+                  {advancedOpen && (
+                    <div className="mt-3 space-y-3 rounded-md border border-border bg-background/40 p-3 text-xs">
+                      <div className="flex items-center justify-between gap-3">
+                        <label htmlFor="maxAlloc" className="text-muted-foreground">Max allocation per asset</label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="maxAlloc"
+                            type="number"
+                            min={1}
+                            max={100}
+                            className="h-8 w-20"
+                            value={maxAlloc}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v > 0 && v <= 100) setMaxAlloc(v);
+                            }}
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <label htmlFor="shrinkage" className="text-muted-foreground">
+                          Historical weight (vs market prior)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="shrinkage"
+                            type="number"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            className="h-8 w-20"
+                            value={shrinkage}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v >= 0 && v <= 1) setShrinkage(v);
+                            }}
+                          />
+                          <span className="text-muted-foreground">{(shrinkage * 100).toFixed(0)}% / {((1 - shrinkage) * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                      <label className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground">Allow short selling (relax constraints)</span>
+                        <input
+                          type="checkbox"
+                          checked={allowShort}
+                          onChange={(e) => setAllowShort(e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                      </label>
+                      <p className="text-muted-foreground">
+                        Defaults: 35% cap per asset, no shorts, 70% historical / 30% market prior.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <HoverCard openDelay={150}>
                   <HoverCardTrigger asChild>
                     <Button
@@ -471,7 +572,7 @@ const Index = () => {
                     </Button>
                   </HoverCardTrigger>
                   <HoverCardContent className="w-80 text-xs leading-relaxed">
-                    <p className="mb-1 font-semibold">1. Tangency Portfolio (Maximum Sharpe Ratio)</p>
+                    <p className="mb-1 font-semibold">Tangency Portfolio (Maximum Sharpe Ratio)</p>
                     <p className="mb-2 text-muted-foreground">
                       Finds the point on the Efficient Frontier where return per
                       unit of risk is highest.
@@ -479,10 +580,16 @@ const Index = () => {
                     <p className="mb-1">
                       Goal: maximize <span className="font-mono">(E[Rₚ] − R_f) / σₚ</span>
                     </p>
-                    <p className="text-muted-foreground">
-                      Closed form: w ∝ Σ⁻¹ (μ − R_f·1), then normalized so the
-                      weights sum to 100%. Negative (short) weights are clipped
-                      to 0 and renormalized.
+                    <p className="mb-2 text-muted-foreground">
+                      Closed form: w ∝ Σ⁻¹ (μ − R_f·1). Uses volatility-adjusted,
+                      shrinkage-blended expected returns; then constrained to a{" "}
+                      {maxAlloc}% cap per asset{allowShort ? "" : ", no shorts"},
+                      and renormalised so weights sum to 100%.
+                    </p>
+                    <p className="rounded bg-muted/40 p-2 italic text-muted-foreground">
+                      Disclaimer: mean-variance optimisation is highly sensitive
+                      to expected return assumptions. Results are exploratory
+                      scenarios, not predictions.
                     </p>
                   </HoverCardContent>
                 </HoverCard>
