@@ -544,18 +544,10 @@ const Index = () => {
                           <span className="text-muted-foreground">{(shrinkage * 100).toFixed(0)}% / {((1 - shrinkage) * 100).toFixed(0)}%</span>
                         </div>
                       </div>
-                      <label className="flex items-center justify-between gap-3">
-                        <span className="text-muted-foreground">Allow short selling (relax constraints)</span>
-                        <input
-                          type="checkbox"
-                          checked={allowShort}
-                          onChange={(e) => setAllowShort(e.target.checked)}
-                          className="h-4 w-4"
-                        />
-                      </label>
                       <p className="text-muted-foreground">
-                        Defaults: 35% cap per asset, no shorts, 70% historical / 30% market prior.
+                        Defaults: 35% cap per asset, long-only (0–100% per asset), 70% historical / 30% market prior.
                       </p>
+
                     </div>
                   )}
                 </div>
