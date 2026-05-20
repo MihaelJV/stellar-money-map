@@ -574,7 +574,7 @@ const Index = () => {
                     <p className="mb-2 text-muted-foreground">
                       Closed form: w ∝ Σ⁻¹ (μ − R_f·1). Uses volatility-adjusted,
                       shrinkage-blended expected returns; then constrained to a{" "}
-                      {maxAlloc}% cap per asset{allowShort ? "" : ", no shorts"},
+                      {maxAlloc}% cap per asset, long-only (0–100%),
                       and renormalised so weights sum to 100%.
                     </p>
                     <p className="rounded bg-muted/40 p-2 italic text-muted-foreground">
