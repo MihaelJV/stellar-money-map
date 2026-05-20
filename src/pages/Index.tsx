@@ -52,7 +52,7 @@ const Index = () => {
 
   // Advanced optimizer settings
   const [maxAlloc, setMaxAlloc] = useState(35);          // % cap per asset
-  const [allowShort, setAllowShort] = useState(false);   // allow negative weights
+  const allowShort = false;                               // long-only: weights constrained to [0%, cap]
   const [shrinkage, setShrinkage] = useState(0.7);       // weight on historical estimate (0–1)
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
