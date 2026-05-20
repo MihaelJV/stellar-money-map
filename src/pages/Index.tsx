@@ -152,18 +152,6 @@ const Index = () => {
     return () => { cancelled = true; };
   }, [rfTicker, startDate, endDate]);
 
-  // Tangency (max-Sharpe) weights — uses blended μ, then applies cap & no-short constraints
-  const tangency = useMemo(() => {
-    if (!covariances || riskFreeRate === null || assets.length < 2) return null;
-    const mu = assets.map((a) => blendedReturns[a.ticker] ?? 0);
-    const cov = assets.map((a) => assets.map((b) => covariances[a.ticker][b.ticker]));
-    const w = tangencyWeights(mu, cov, riskFreeRate);
-    if (!w) return null;
-    const constrained = constrainWeights(w, maxAlloc / 100, allowShort);
-    if (!constrained) return null;
-    return constrained.map((x) => x * 100);
-  }, [assets, covariances, riskFreeRate, blendedReturns, maxAlloc, allowShort]);
-
   // Market monthly returns + CAGR (S&P 500) — used for beta and the shrinkage prior
   const [marketMonthly, setMarketMonthly] = useState<Map<string, number> | null>(null);
   const [marketCagr, setMarketCagr] = useState<number>(0);
@@ -204,6 +192,18 @@ const Index = () => {
     () => assets.reduce((s, a) => s + (blendedReturns[a.ticker] ?? 0) * (a.weight / 100), 0),
     [assets, blendedReturns],
   );
+
+  // Tangency (max-Sharpe) weights — uses blended μ, then applies cap & no-short constraints
+  const tangency = useMemo(() => {
+    if (!covariances || riskFreeRate === null || assets.length < 2) return null;
+    const mu = assets.map((a) => blendedReturns[a.ticker] ?? 0);
+    const cov = assets.map((a) => assets.map((b) => covariances[a.ticker][b.ticker]));
+    const w = tangencyWeights(mu, cov, riskFreeRate);
+    if (!w) return null;
+    const constrained = constrainWeights(w, maxAlloc / 100, allowShort);
+    if (!constrained) return null;
+    return constrained.map((x) => x * 100);
+  }, [assets, covariances, riskFreeRate, blendedReturns, maxAlloc, allowShort]);
 
   const betas = useMemo(() => {
     const map: Record<string, number> = {};
