@@ -14,6 +14,7 @@ import {
 import { fetchHistory, type PricePoint } from "@/lib/stooq";
 import {
   cagr, monthlyReturns, correlationMatrix, annualizedStdDev, tangencyWeights, beta,
+  arithmeticExpected, constrainWeights,
   SCENARIO_MULTIPLIERS, SCENARIO_LABELS, type Scenario,
 } from "@/lib/finance";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
@@ -49,6 +50,12 @@ const Index = () => {
   const [initialValue, setInitialValue] = useState(10000);
   const [colorfulScenarios, setColorfulScenarios] = useState<Scenario[]>([]);
 
+  // Advanced optimizer settings
+  const [maxAlloc, setMaxAlloc] = useState(35);          // % cap per asset
+  const [allowShort, setAllowShort] = useState(false);   // allow negative weights
+  const [shrinkage, setShrinkage] = useState(0.7);       // weight on historical estimate (0–1)
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   // keep colorful scenarios sized
   useEffect(() => {
     setColorfulScenarios((prev) => {
@@ -64,7 +71,8 @@ const Index = () => {
     [assets],
   );
 
-  const portfolioReturn = useMemo(
+  // Portfolio CAGR (geometric, used for compounding scenarios)
+  const portfolioCagr = useMemo(
     () => assets.reduce((s, a) => s + a.return * (a.weight / 100), 0),
     [assets],
   );
@@ -144,33 +152,58 @@ const Index = () => {
     return () => { cancelled = true; };
   }, [rfTicker, startDate, endDate]);
 
-  // Tangency (max-Sharpe) weights — long-only via clip + renormalize
-  const tangency = useMemo(() => {
-    if (!covariances || riskFreeRate === null || assets.length < 2) return null;
-    const mu = assets.map((a) => a.return);
-    const cov = assets.map((a) => assets.map((b) => covariances[a.ticker][b.ticker]));
-    const w = tangencyWeights(mu, cov, riskFreeRate);
-    if (!w) return null;
-    const clipped = w.map((x) => Math.max(0, x));
-    const s = clipped.reduce((a, b) => a + b, 0);
-    if (s <= 1e-9) return null;
-    return clipped.map((x) => (x / s) * 100);
-  }, [assets, covariances, riskFreeRate]);
-
-  // Market monthly returns (S&P 500) for beta calculation
+  // Market monthly returns + CAGR (S&P 500) — used for beta and the shrinkage prior
   const [marketMonthly, setMarketMonthly] = useState<Map<string, number> | null>(null);
+  const [marketCagr, setMarketCagr] = useState<number>(0);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const points = await fetchHistory("^GSPC", new Date(startDate), new Date(endDate));
-        if (!cancelled) setMarketMonthly(monthlyReturns(points));
+        if (!cancelled) {
+          setMarketMonthly(monthlyReturns(points));
+          setMarketCagr(cagr(points));
+        }
       } catch {
-        if (!cancelled) setMarketMonthly(null);
+        if (!cancelled) { setMarketMonthly(null); setMarketCagr(0); }
       }
     })();
     return () => { cancelled = true; };
   }, [startDate, endDate]);
+
+  // Arithmetic expected return per asset ≈ CAGR + σ²/2
+  const arithReturns = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const a of assets) map[a.ticker] = arithmeticExpected(a.return, stdDevs[a.ticker] ?? 0);
+    return map;
+  }, [assets, stdDevs]);
+
+  // Shrinkage toward market prior: blend arithmetic estimate with market baseline
+  const blendedReturns = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const a of assets) {
+      map[a.ticker] = shrinkage * (arithReturns[a.ticker] ?? 0) + (1 - shrinkage) * marketCagr;
+    }
+    return map;
+  }, [assets, arithReturns, shrinkage, marketCagr]);
+
+  // Portfolio expected return (blended arithmetic, used for optimizer & display)
+  const portfolioReturn = useMemo(
+    () => assets.reduce((s, a) => s + (blendedReturns[a.ticker] ?? 0) * (a.weight / 100), 0),
+    [assets, blendedReturns],
+  );
+
+  // Tangency (max-Sharpe) weights — uses blended μ, then applies cap & no-short constraints
+  const tangency = useMemo(() => {
+    if (!covariances || riskFreeRate === null || assets.length < 2) return null;
+    const mu = assets.map((a) => blendedReturns[a.ticker] ?? 0);
+    const cov = assets.map((a) => assets.map((b) => covariances[a.ticker][b.ticker]));
+    const w = tangencyWeights(mu, cov, riskFreeRate);
+    if (!w) return null;
+    const constrained = constrainWeights(w, maxAlloc / 100, allowShort);
+    if (!constrained) return null;
+    return constrained.map((x) => x * 100);
+  }, [assets, covariances, riskFreeRate, blendedReturns, maxAlloc, allowShort]);
 
   const betas = useMemo(() => {
     const map: Record<string, number> = {};
@@ -193,7 +226,7 @@ const Index = () => {
     toast.success("Applied tangency-portfolio weights");
   };
 
-  const yearsToDouble = portfolioReturn > 0 ? 70 / (portfolioReturn * 100) : Infinity;
+  const yearsToDouble = portfolioCagr > 0 ? 70 / (portfolioCagr * 100) : Infinity;
 
   const addTicker = useCallback(async () => {
     const raw = tickerInput.trim().toUpperCase();
@@ -278,14 +311,14 @@ const Index = () => {
     }
   }, [assets, startDate, endDate]);
 
-  // Build scenario tables
+  // Build scenario tables — compound using portfolio CAGR (geometric)
   const buildScenarioRows = (scenarios: Scenario[]) => {
     const rows = [];
     let value = initialValue;
     let cumulative = 1;
     for (let y = 0; y < scenarios.length; y++) {
       const s = scenarios[y];
-      const annual = portfolioReturn * SCENARIO_MULTIPLIERS[s];
+      const annual = portfolioCagr * SCENARIO_MULTIPLIERS[s];
       cumulative *= 1 + annual;
       value *= 1 + annual;
       rows.push({ year: y + 1, scenario: s, annual, cumulative: cumulative - 1, value });
@@ -297,8 +330,8 @@ const Index = () => {
     () => Array(scenarioYears).fill("bullish"),
     [scenarioYears],
   );
-  const baselineRows = useMemo(() => buildScenarioRows(baselineScenarios), [baselineScenarios, portfolioReturn, initialValue]);
-  const colorfulRows = useMemo(() => buildScenarioRows(colorfulScenarios), [colorfulScenarios, portfolioReturn, initialValue]);
+  const baselineRows = useMemo(() => buildScenarioRows(baselineScenarios), [baselineScenarios, portfolioCagr, initialValue]);
+  const colorfulRows = useMemo(() => buildScenarioRows(colorfulScenarios), [colorfulScenarios, portfolioCagr, initialValue]);
 
   const compareData = useMemo(() => {
     const data: { year: number | string; baseline: number; colorful: number }[] = [
@@ -398,7 +431,7 @@ const Index = () => {
                         {tangency ? `${tangency[i].toFixed(1)}%` : "—"}
                       </span>
                     </span>
-                    <span className={`ml-auto text-sm font-medium ${a.return >= 0 ? "text-bull" : "text-bear"}`}>
+                    <span className={`ml-auto text-sm font-medium ${a.return >= 0 ? "text-bull" : "text-bear"}`} title="CAGR (geometric)">
                       {pct(a.return)}
                     </span>
                     <Button size="icon" variant="ghost" onClick={() => removeAsset(a.ticker)}>
@@ -413,9 +446,43 @@ const Index = () => {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Expected return (weighted)</span>
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    Expected return (weighted, arithmetic)
+                    <HoverCard openDelay={150}>
+                      <HoverCardTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="How is expected return computed?"
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 text-xs leading-relaxed">
+                        <p className="mb-2">
+                          <span className="font-semibold">Geometric (CAGR)</span> is what compounds your money;{" "}
+                          <span className="font-semibold">arithmetic expected return</span>{" "}
+                          is the per-period average used in mean-variance optimisation.
+                        </p>
+                        <p className="mb-2 text-muted-foreground">
+                          We approximate it as <span className="font-mono">μ ≈ CAGR + σ²/2</span> (volatility-adjusted),
+                          then shrink toward the market baseline (S&amp;P 500 CAGR ={" "}
+                          <span className="font-mono">{pct(marketCagr)}</span>):
+                        </p>
+                        <p className="font-mono text-muted-foreground">
+                          μ_blend = {shrinkage.toFixed(2)}·μ + {(1 - shrinkage).toFixed(2)}·μ_market
+                        </p>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </span>
                   <span className={`font-semibold ${portfolioReturn >= 0 ? "text-bull" : "text-bear"}`}>
                     {pct(portfolioReturn)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Portfolio CAGR (geometric)</span>
+                  <span className={`font-semibold ${portfolioCagr >= 0 ? "text-bull" : "text-bear"}`}>
+                    {pct(portfolioCagr)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -426,6 +493,73 @@ const Index = () => {
                     {riskFreeRate === null ? "—" : pct(riskFreeRate)}
                   </span>
                 </div>
+
+                {/* Advanced optimiser settings */}
+                <div className="border-t border-border pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setAdvancedOpen((v) => !v)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    {advancedOpen ? "▾" : "▸"} Advanced optimiser settings
+                  </button>
+                  {advancedOpen && (
+                    <div className="mt-3 space-y-3 rounded-md border border-border bg-background/40 p-3 text-xs">
+                      <div className="flex items-center justify-between gap-3">
+                        <label htmlFor="maxAlloc" className="text-muted-foreground">Max allocation per asset</label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="maxAlloc"
+                            type="number"
+                            min={1}
+                            max={100}
+                            className="h-8 w-20"
+                            value={maxAlloc}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v > 0 && v <= 100) setMaxAlloc(v);
+                            }}
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <label htmlFor="shrinkage" className="text-muted-foreground">
+                          Historical weight (vs market prior)
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="shrinkage"
+                            type="number"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            className="h-8 w-20"
+                            value={shrinkage}
+                            onChange={(e) => {
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v >= 0 && v <= 1) setShrinkage(v);
+                            }}
+                          />
+                          <span className="text-muted-foreground">{(shrinkage * 100).toFixed(0)}% / {((1 - shrinkage) * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                      <label className="flex items-center justify-between gap-3">
+                        <span className="text-muted-foreground">Allow short selling (relax constraints)</span>
+                        <input
+                          type="checkbox"
+                          checked={allowShort}
+                          onChange={(e) => setAllowShort(e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                      </label>
+                      <p className="text-muted-foreground">
+                        Defaults: 35% cap per asset, no shorts, 70% historical / 30% market prior.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <HoverCard openDelay={150}>
                   <HoverCardTrigger asChild>
                     <Button
@@ -438,7 +572,7 @@ const Index = () => {
                     </Button>
                   </HoverCardTrigger>
                   <HoverCardContent className="w-80 text-xs leading-relaxed">
-                    <p className="mb-1 font-semibold">1. Tangency Portfolio (Maximum Sharpe Ratio)</p>
+                    <p className="mb-1 font-semibold">Tangency Portfolio (Maximum Sharpe Ratio)</p>
                     <p className="mb-2 text-muted-foreground">
                       Finds the point on the Efficient Frontier where return per
                       unit of risk is highest.
@@ -446,10 +580,16 @@ const Index = () => {
                     <p className="mb-1">
                       Goal: maximize <span className="font-mono">(E[Rₚ] − R_f) / σₚ</span>
                     </p>
-                    <p className="text-muted-foreground">
-                      Closed form: w ∝ Σ⁻¹ (μ − R_f·1), then normalized so the
-                      weights sum to 100%. Negative (short) weights are clipped
-                      to 0 and renormalized.
+                    <p className="mb-2 text-muted-foreground">
+                      Closed form: w ∝ Σ⁻¹ (μ − R_f·1). Uses volatility-adjusted,
+                      shrinkage-blended expected returns; then constrained to a{" "}
+                      {maxAlloc}% cap per asset{allowShort ? "" : ", no shorts"},
+                      and renormalised so weights sum to 100%.
+                    </p>
+                    <p className="rounded bg-muted/40 p-2 italic text-muted-foreground">
+                      Disclaimer: mean-variance optimisation is highly sensitive
+                      to expected return assumptions. Results are exploratory
+                      scenarios, not predictions.
                     </p>
                   </HoverCardContent>
                 </HoverCard>
@@ -528,7 +668,9 @@ const Index = () => {
                   <TableRow>
                     <TableHead>Ticker</TableHead>
                     <TableHead>Weight</TableHead>
-                    <TableHead>Avg annual return (CAGR)</TableHead>
+                    <TableHead>CAGR (geometric)</TableHead>
+                    <TableHead>Arithmetic μ ≈ CAGR + σ²/2</TableHead>
+                    <TableHead>Blended μ (used by optimiser)</TableHead>
                     <TableHead>Period</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -538,6 +680,12 @@ const Index = () => {
                       <TableCell className="font-mono font-semibold">{a.ticker}</TableCell>
                       <TableCell>{a.weight}%</TableCell>
                       <TableCell className={a.return >= 0 ? "text-bull" : "text-bear"}>{pct(a.return)}</TableCell>
+                      <TableCell className={(arithReturns[a.ticker] ?? 0) >= 0 ? "text-bull" : "text-bear"}>
+                        {pct(arithReturns[a.ticker] ?? 0)}
+                      </TableCell>
+                      <TableCell className={(blendedReturns[a.ticker] ?? 0) >= 0 ? "text-bull" : "text-bear"}>
+                        {pct(blendedReturns[a.ticker] ?? 0)}
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{startDate} → {endDate}</TableCell>
                     </TableRow>
                   ))}

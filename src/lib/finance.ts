@@ -162,6 +162,49 @@ export function tangencyWeights(
   return z.map((x) => x / s);
 }
 
+/** Arithmetic expected return ≈ geometric (CAGR) + σ²/2. */
+export function arithmeticExpected(cagrVal: number, stdDev: number): number {
+  return cagrVal + (stdDev * stdDev) / 2;
+}
+
+/**
+ * Constrain weights to [0 or -cap, cap] with sum = 1 via iterative water-filling.
+ * `allowShort=false` clips negatives to 0 first.
+ */
+export function constrainWeights(
+  w: number[],
+  cap: number,
+  allowShort: boolean,
+): number[] | null {
+  const n = w.length;
+  if (n === 0) return null;
+  let x = allowShort ? [...w] : w.map((v) => Math.max(0, v));
+  let s = x.reduce((a, b) => a + b, 0);
+  if (s <= 1e-12) {
+    // fallback to equal weights, capped
+    const eq = Math.min(cap, 1 / n);
+    return Array(n).fill(eq).map((v, _i, arr) => v / arr.reduce((a, b) => a + b, 0));
+  }
+  x = x.map((v) => v / s);
+  // If cap * n < 1, infeasible — set every asset to 1/n (cap will be hit anyway)
+  if (cap * n < 1 - 1e-9) return Array(n).fill(1 / n);
+  for (let iter = 0; iter < 100; iter++) {
+    const over = x.map((v) => v > cap);
+    if (!over.some(Boolean)) break;
+    let excess = 0;
+    let freeSum = 0;
+    for (let i = 0; i < n; i++) {
+      if (x[i] > cap) { excess += x[i] - cap; x[i] = cap; }
+      else if (x[i] > 0) freeSum += x[i];
+    }
+    if (freeSum <= 1e-12) break;
+    for (let i = 0; i < n; i++) {
+      if (x[i] < cap && x[i] > 0) x[i] += excess * (x[i] / freeSum);
+    }
+  }
+  return x;
+}
+
 export const SCENARIO_MULTIPLIERS = {
   boom: 1.2,
   bullish: 1,
