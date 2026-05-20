@@ -566,7 +566,6 @@ const Index = () => {
                       variant="secondary"
                       className="mt-2 w-full"
                       onClick={applyOptimise}
-                      disabled={!tangency}
                     >
                       Optimise
                     </Button>
