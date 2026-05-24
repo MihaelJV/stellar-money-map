@@ -24,6 +24,8 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: bun run build
+        env:
+          GITHUB_PAGES: "true"
       - name: Add SPA 404 fallback
         run: cp dist/index.html dist/404.html
       - uses: actions/configure-pages@v5

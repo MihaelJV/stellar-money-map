@@ -1,79 +1,33 @@
-## Scope
+## Problem
 
-Add a risk-free reference line to the scenario comparison line chart, and expose where the Rf number comes from (ticker, name, latest yield, observation date) so reviewers can audit it.
+`vite.config.ts` hardcodes `base: "/stellar-money-map/"` for any non-development build. That path is correct for GitHub Pages (served at `username.github.io/stellar-money-map/`) but wrong for the Lovable publish target `https://stellar-money-map.lovable.app`, which serves from the root `/`.
 
-## Changes — all in `src/pages/Index.tsx`
+Result: the published Lovable site requests `/stellar-money-map/assets/index-*.js`, gets a 404 (SPA fallback returns `index.html`), no JS executes → blank white page.
 
-### 1. Capture the Rf observation date
+## Fix
 
-In the `useEffect` that fetches Rf (~line 188), store the timestamp of the last close alongside the rate:
+Switch the base on an env flag rather than `mode`, so GitHub Pages keeps its subpath base and every other build (including Lovable publish) uses `/`.
 
-```ts
-const [riskFreeRate, setRiskFreeRate] = useState<number | null>(null);
-const [rfAsOf, setRfAsOf] = useState<Date | null>(null);
-// in the effect:
-setRiskFreeRate(points[points.length - 1].close / 100);
-setRfAsOf(points[points.length - 1].date);
-```
-
-### 2. Compound Rf into the chart series
-
-Add a `riskFree` field to `compareData` (~line 419) so it appears as a third line. Use the same compounding convention the baseline uses — `initialValue · (1 + Rf)^t`:
+In `vite.config.ts`:
 
 ```ts
-data.push({
-  year: i + 1,
-  baseline: ...,
-  colorful: ...,
-  riskFree: riskFreeRate !== null ? initialValue * Math.pow(1 + riskFreeRate, i + 1) : null,
-});
+// GitHub Actions sets GITHUB_ACTIONS=true automatically
+base: process.env.GITHUB_PAGES === "true" ? "/stellar-money-map/" : "/",
 ```
 
-Year-0 point also gets `riskFree: initialValue`.
+Then update `.github/workflows/deploy.yml` to set the flag on the build step:
 
-### 3. Draw the line
-
-In the `LineChart` block (~line 1023), add a third `<Line>` rendered as a dashed muted reference, beneath the two existing series in the legend:
-
-```tsx
-<Line
-  type="monotone"
-  dataKey="riskFree"
-  stroke="hsl(var(--muted-foreground))"
-  strokeWidth={1.5}
-  strokeDasharray="4 4"
-  dot={false}
-  name={`Risk-free (${rfTicker})`}
-/>
+```yaml
+- run: bun run build
+  env:
+    GITHUB_PAGES: "true"
 ```
 
-`dot={false}` keeps the reference visually quieter than the two scenario paths.
+## Why this works
 
-### 4. Provenance caption under the chart
+- Lovable preview + Lovable publish + local `vite build`: base `/` → assets resolve correctly at the root.
+- GitHub Pages CI build: `GITHUB_PAGES=true` → base `/stellar-money-map/` preserved, existing deploy keeps working.
 
-Directly below the `ResponsiveContainer` (still inside the scenarios `Card`), add a small one-line caption — same pattern as other muted sub-labels in the app:
+## Out of scope
 
-```tsx
-<p className="mt-2 text-xs text-muted-foreground">
-  Risk-free reference: <span className="font-medium text-foreground">{rfLabel}</span>
-  {" · "}latest yield {riskFreeRate !== null ? pct(riskFreeRate) : "—"}
-  {rfAsOf && ` · as of ${rfAsOf.toISOString().slice(0, 10)}`}
-  {" · "}source Yahoo Finance via stooq-proxy
-</p>
-```
-
-`rfLabel` already encodes both the human name and the ticker (e.g. "10-year Treasury Note (^TNX)"). `pct()` and `money()` helpers already exist in the file.
-
-### 5. Tooltip / legend consistency
-
-Recharts' default `Tooltip` will pick up the new series automatically; no formatter change needed since the existing `formatter={(v) => money(v)}` handles all numeric series.
-
-## Explicitly out of scope
-
-- No change to Rf source, ticker selection logic, or scenario math.
-- No change to the optimiser, Sharpe calc, or any other consumer of `riskFreeRate`.
-- No README edit (the README already lists the Treasury proxy methodology).
-
-## Confirmation
-
-Reply "go" to ship this, or tell me to drop the caption / change line style / put the caption inside a hover-card instead.
+No app code, router, or asset changes. Republish via the Publish button after the change lands.
