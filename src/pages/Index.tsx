@@ -185,6 +185,7 @@ const Index = () => {
   }, [scenarioYears]);
 
   const [riskFreeRate, setRiskFreeRate] = useState<number | null>(null);
+  const [rfAsOf, setRfAsOf] = useState<Date | null>(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -197,14 +198,17 @@ const Index = () => {
         rfStart.setDate(rfStart.getDate() - 30);
         const points = await fetchHistory(rfTicker, rfStart, today);
         if (!cancelled && points.length > 0) {
-          setRiskFreeRate(points[points.length - 1].close / 100);
+          const last = points[points.length - 1];
+          setRiskFreeRate(last.close / 100);
+          setRfAsOf(last.date);
         }
       } catch {
-        if (!cancelled) setRiskFreeRate(null);
+        if (!cancelled) { setRiskFreeRate(null); setRfAsOf(null); }
       }
     })();
     return () => { cancelled = true; };
   }, [rfTicker]);
+
 
 
   // Market monthly returns + CAGR (S&P 500) — used for beta and the shrinkage prior
