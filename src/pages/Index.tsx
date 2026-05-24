@@ -358,14 +358,17 @@ const Index = () => {
     }
   }, [assets, startDate, endDate]);
 
-  // Build scenario tables — compound using portfolio CAGR (geometric)
+  // Build scenario tables — annual return shocked off portfolio's arithmetic μ
+  // by k_μ · σ_p (volatility-scaled), then compounded across the horizon.
   const buildScenarioRows = (scenarios: Scenario[]) => {
-    const rows = [];
+    const rows: ScenarioRow[] = [];
     let value = initialValue;
     let cumulative = 1;
     for (let y = 0; y < scenarios.length; y++) {
       const s = scenarios[y];
-      const annual = portfolioCagr * SCENARIO_MULTIPLIERS[s];
+      const { kMu } = SCENARIO_SHOCKS[s];
+      // Floor at -95% to keep arithmetic projections numerically sane
+      const annual = Math.max(-0.95, portfolioReturn + kMu * portfolioStdDev);
       cumulative *= 1 + annual;
       value *= 1 + annual;
       rows.push({ year: y + 1, scenario: s, annual, cumulative: cumulative - 1, value });
@@ -377,8 +380,8 @@ const Index = () => {
     () => Array(scenarioYears).fill("bullish"),
     [scenarioYears],
   );
-  const baselineRows = useMemo(() => buildScenarioRows(baselineScenarios), [baselineScenarios, portfolioCagr, initialValue]);
-  const colorfulRows = useMemo(() => buildScenarioRows(colorfulScenarios), [colorfulScenarios, portfolioCagr, initialValue]);
+  const baselineRows = useMemo(() => buildScenarioRows(baselineScenarios), [baselineScenarios, portfolioReturn, portfolioStdDev, initialValue]);
+  const colorfulRows = useMemo(() => buildScenarioRows(colorfulScenarios), [colorfulScenarios, portfolioReturn, portfolioStdDev, initialValue]);
 
   const compareData = useMemo(() => {
     const data: { year: number | string; baseline: number; colorful: number }[] = [
