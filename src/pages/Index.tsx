@@ -316,20 +316,9 @@ const Index = () => {
         toast.error("Weight must be between 0 and 100");
         return prev;
       }
-      // Special case: editing the last asset adjusts the one immediately above
-      if (idx === prev.length - 1 && prev.length > 1) {
-        const othersAboveSum = prev.slice(0, idx - 1).reduce((s, a) => s + a.weight, 0);
-        const adjusted = 100 - othersAboveSum - w;
-        if (adjusted < -0.0001) {
-          toast.error("Weights above + this entry exceed 100%");
-          return prev;
-        }
-        return prev.map((a, i) => {
-          if (i === idx) return { ...a, weight: w };
-          if (i === idx - 1) return { ...a, weight: Math.max(0, adjusted) };
-          return a;
-        });
-      }
+      // Rows above `idx` stay fixed; remaining weight is split equally across rows below.
+      // For the last row, belowCount=0 — `w` is accepted as-is and Total Weight tile
+      // reflects any deviation from 100% so the user can rebalance manually.
       const aboveSum = prev.slice(0, idx).reduce((s, a) => s + a.weight, 0);
       const remaining = 100 - aboveSum - w;
       if (remaining < -0.0001) {
