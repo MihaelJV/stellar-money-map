@@ -1,60 +1,61 @@
-# Visual Polish Plan — Portfolio Lab
+## Scope
 
-## Evaluation of the brief
-
-The brief is reasonable but **overscoped** for a competition pass. Trying to touch every card, table, chart, and color in one patch is how regressions slip in. I'm narrowing to the highest-judge-impact changes that are mechanically safe (pure className / token edits, no JSX restructuring around stateful logic, no chart prop changes).
-
-**Explicit non-goals** (rejecting parts of the brief):
-- No section reordering — the current top-down flow (inputs → composition → metrics → scenarios) already reads correctly and reordering risks breaking `useMemo` dependency assumptions in reviewers' minds.
-- No "Bloomberg terminal" reskin — swapping the green-accent finance palette wholesale would invalidate the existing chart color tokens (`--chart-1..8`) that pie/line charts depend on.
-- No new component abstractions (`StatRow`, `MetricCard`, etc.) — extraction is a refactor, not a polish pass, and it touches hover-card JSX which the brief forbids changing.
-
-## Functionality guarantee
-
-**Zero changes** to: finance.ts, hooks, state, handlers, hover-card *content*, validation, defaults, chart data/props, optimizer, edge functions, tests, Index.tsx logic. Only edits are: `src/index.css` tokens and Tailwind `className` strings + one header copy/markup tweak.
+Ship fixes #1, #3, #5 from the math audit. Leave #2, #4, #6, #7 as documented approximations (no code change, but call them out in the README so reviewers know they're intentional).
 
 ## Changes
 
-### 1. Palette refinement (`src/index.css`)
-- Deepen background from `220 26% 8%` → `222 30% 6%` and card from `220 24% 11%` → `222 26% 9%` for more contrast against text and chart fills.
-- Desaturate primary green from `152 76% 50%` → `158 64% 48%` (still bullish, less neon). Update `--ring`, `--bull`, `--chart-1`, `--shadow-glow`, `--gradient-primary` to match the new hue so charts stay coherent.
-- Tighten border `220 18% 20%` → `222 20% 16%` for quieter card edges.
-- Soften `--neutral` (amber warning) from `45 93% 58%` → `38 88% 56%`.
-- `--gradient-card` becomes near-flat (`222 26% 10%` → `222 26% 8%`) — removes the "marketing gradient" feel.
-- Keep all token *names* and `--chart-2..8` unchanged so no component breaks.
+### 1. Fix #1 — Consistent arithmetic prior in shrinkage blend
+**File:** `src/pages/Index.tsx` (~line 240, where `muBlend` is computed)
 
-### 2. Header (`Index.tsx` lines 422-435)
-- Reduce header padding `py-8` → `py-6`, drop `shadow-glow` on the logo tile (replace with `ring-1 ring-primary/20`), shrink logo `h-10 w-10` → `h-9 w-9`.
-- Add a subtle right-aligned "v1 · educational tool" chip in `text-xs text-muted-foreground` for trust signaling. Pure presentational `<span>`, no logic.
+Currently the asset side uses `arithmeticExpected(cagr, σ)` (= CAGR + σ²/2) but the market side uses raw market CAGR. Make the market side arithmetic too:
 
-### 3. Card rhythm
-- Global section spacing `space-y-6` → `space-y-4` on `<main>` for denser, terminal-like vertical rhythm.
-- Card padding `p-6` → `p-5` across the dashboard cards (date range, ticker input, allocation, structure, tables, scenarios). One className find/replace.
-- Add `border border-border/60` to every `Card` so edges read on the new darker bg.
+```ts
+const muMarketArith = arithmeticExpected(marketCagr, marketStdDev);
+const muBlend = lambda * muArith + (1 - lambda) * muMarketArith;
+```
 
-### 4. Typography hierarchy
-- Section headings `text-lg font-semibold` → `text-sm font-semibold uppercase tracking-wider text-muted-foreground` with the lucide icon kept inline — gives a quant/report feel and visually subordinates them to the H1.
-- Metric values in the allocation summary block: bump from `font-semibold` to `font-semibold tabular-nums` so numbers align vertically. Pure className.
-- Add `font-mono tabular-nums` to all `pct(...)` / number cells in the correlation, std-dev, covariance, beta tables (className-only on existing `<TableCell>`s).
+Both sides now live on the same arithmetic-return scale. No other call sites affected.
 
-### 5. Table density
-- Add `text-xs` to table bodies and `text-[11px] uppercase tracking-wide text-muted-foreground` to table headers. No structural change, just classes on existing `<TableHead>` / `<TableCell>`.
+### 2. Fix #3 — Proportional renormalisation of optimiser survivors
+**File:** `src/pages/Index.tsx` (~lines 275–296 in `applyOptimise`)
 
-### 6. Chart card polish
-- Pie chart: increase inner/outer radius is a prop change → **skip** (touches chart logic). Instead just tighten the surrounding `<div className="h-72">` to `h-64` so the legend sits closer.
-- Scenario line chart: same — container className only, no Recharts prop edits.
+Replace the "any zero ⇒ flatten survivors to equal weights" branch with:
 
-### 7. Empty state (`Index.tsx` ~568)
-- Reduce "Start by adding tickers" card to a single muted line with smaller `+` icon — currently dominates the empty view. Pure markup/className inside the same `<Card>`, no handler changes.
+- Identify survivors (`w > 1e-6`).
+- Keep their relative magnitudes from the tangency solution.
+- Renormalise survivors so they sum to 100; zeros stay 0.
 
-## Verification
+```ts
+const survivors = tangency.map((w, i) => (w > 1e-6 ? w : 0));
+const s = survivors.reduce((a, b) => a + b, 0);
+const normalised = s > 0 ? survivors.map(w => (w / s) * 100) : tangency.map(() => 100 / tangency.length);
+```
 
-- `rg "SCENARIO_|tangencyWeights|constrainWeights|portfolioStdDev|arithmeticExpected"` → unchanged hits.
-- Diff should show **only** `src/index.css` and className strings + the header chip in `Index.tsx`. No imports added/removed. No hooks touched. No Recharts props touched.
-- Visual check at 1269×1062 (current viewport) with and without tickers; quick check at `md` breakpoint that the two-column composition still stacks.
+This preserves the Σ⁻¹(μ − rf) signal instead of discarding it. Still satisfies "no zero asset, sums to 100" only when there are no zeros — if the optimiser legitimately wants 0 in an asset, that 0 is respected. (The previous user request to "redistribute zeros equally" is superseded by this stricter, more faithful behaviour; if you want the old equal-split kept, say so and I'll keep both branches.)
 
-## Out of scope (will not touch)
-- Hover-card copy, formulas, disclaimer text.
-- Advanced settings inputs / shrinkage / cap UI behavior.
-- Any Recharts component props (`innerRadius`, `dataKey`, `domain`, tooltips).
-- README, edge functions, finance.ts, tests.
+### 3. Fix #5 — Final renormalisation in `constrainWeights`
+**File:** `src/lib/finance.ts` (end of `constrainWeights`, before `return x`)
+
+Add a single hardening line so floating-point drift or early loop breaks can never leave Σw < 1:
+
+```ts
+const total = x.reduce((a, b) => a + b, 0);
+if (total > 0) x = x.map(v => v / total);
+return x;
+```
+
+### 4. README amendment
+**File:** `README.md` — extend the **Methodology → A note on robustness** section with a short "Known approximations" subsection documenting #2, #4, #6, #7:
+
+- **#2** σ in `μ ≈ CAGR + σ²/2` uses annualised simple-return σ rather than log-return σ — standard practical approximation.
+- **#4** Single-asset displayed σ scales linearly with weight, so for weights ≠ 100% the displayed μ and Sharpe assume full deployment of the entered weight.
+- **#6** Scenario shocks are deterministic linear shifts in σ_p, not stochastic paths — labels (Boom/Average/Recession) describe stress bands, not simulated regimes.
+- **#7** Doubling time uses Rule-of-70 (continuous compounding); Rule-of-72 (discrete) would differ slightly.
+
+## Out of scope
+
+No UI/visual changes. No changes to hooks, charts, or edge functions. Optimiser solver itself untouched — only its post-processing.
+
+## Confirmation requested
+
+Ship subset = **{#1, #3, #5} + README note covering #2, #4, #6, #7**. Reply "go" to implement, or tell me which item to drop/adjust (e.g. keep the equal-split fallback from the previous turn instead of proportional renormalisation in #3).
