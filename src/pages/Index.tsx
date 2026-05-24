@@ -948,8 +948,8 @@ const Index = () => {
         {assets.length > 0 && (
           <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
             <div className="mb-6 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Scenario analysis</h2>
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Scenario analysis</h2>
             </div>
 
             <div className="mb-6 grid gap-4 md:grid-cols-3">
