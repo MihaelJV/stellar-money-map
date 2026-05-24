@@ -421,18 +421,20 @@ const Index = () => {
   const colorfulRows = useMemo(() => buildScenarioRows(colorfulScenarios), [colorfulScenarios, portfolioReturn, portfolioStdDev, initialValue]);
 
   const compareData = useMemo(() => {
-    const data: { year: number | string; baseline: number; colorful: number }[] = [
-      { year: 0, baseline: initialValue, colorful: initialValue },
+    const data: { year: number | string; baseline: number; colorful: number; riskFree: number | null }[] = [
+      { year: 0, baseline: initialValue, colorful: initialValue, riskFree: riskFreeRate !== null ? initialValue : null },
     ];
     for (let i = 0; i < scenarioYears; i++) {
       data.push({
         year: i + 1,
         baseline: baselineRows[i]?.value ?? initialValue,
         colorful: colorfulRows[i]?.value ?? initialValue,
+        riskFree: riskFreeRate !== null ? initialValue * Math.pow(1 + riskFreeRate, i + 1) : null,
       });
     }
     return data;
-  }, [baselineRows, colorfulRows, scenarioYears, initialValue]);
+  }, [baselineRows, colorfulRows, scenarioYears, initialValue, riskFreeRate]);
+
 
   const pieData = assets.map((a) => ({ name: a.ticker, value: a.weight }));
 
