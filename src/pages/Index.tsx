@@ -12,6 +12,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Legend,
 } from "recharts";
 import { fetchHistory, type PricePoint } from "@/lib/stooq";
+import { fetchQuoteInfo, type QuoteInfo } from "@/lib/quoteInfo";
 import {
   cagr, monthlyReturns, correlationMatrix, annualizedStdDev, tangencyWeights, beta,
   arithmeticExpected, constrainWeights,
@@ -24,7 +25,9 @@ interface Asset {
   weight: number;       // 0-100
   return: number;       // CAGR
   monthly: Map<string, number>;
+  info?: QuoteInfo | null;
 }
+
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))","hsl(var(--chart-2))","hsl(var(--chart-3))","hsl(var(--chart-4))",
@@ -237,11 +240,14 @@ const Index = () => {
     }
     setLoading(true);
     try {
-      const points: PricePoint[] = await fetchHistory(raw, new Date(startDate), new Date(endDate));
+      const [points, info] = await Promise.all([
+        fetchHistory(raw, new Date(startDate), new Date(endDate)),
+        fetchQuoteInfo(raw),
+      ]);
       const r = cagr(points);
       const monthly = monthlyReturns(points);
       setAssets((prev) => {
-        const next = [...prev, { ticker: raw, weight: 0, return: r, monthly }];
+        const next = [...prev, { ticker: raw, weight: 0, return: r, monthly, info }];
         const equal = 100 / next.length;
         return next.map((a) => ({ ...a, weight: equal }));
       });
