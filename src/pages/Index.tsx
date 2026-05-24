@@ -424,7 +424,7 @@ const Index = () => {
         <div className="container flex items-center justify-between py-6">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-primary ring-1 ring-primary/20">
-              <TrendingUp className="h-4.5 w-4.5 text-primary-foreground" />
+              <TrendingUp className="h-[18px] w-[18px] text-primary-foreground" />
             </div>
             <div>
               <h1 className="text-xl font-semibold tracking-tight">Portfolio Scenario Lab</h1>
