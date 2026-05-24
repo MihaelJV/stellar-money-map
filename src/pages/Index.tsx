@@ -279,7 +279,21 @@ const Index = () => {
       );
       return;
     }
-    setAssets((prev) => prev.map((a, i) => ({ ...a, weight: tangency[i] ?? a.weight })));
+    // If the optimiser zeroes out any asset, equally distribute 100% across the
+    // remaining (non-zero) assets so weights still sum to exactly 100.
+    const EPS = 1e-6;
+    const hasZero = tangency.some((w) => w <= EPS);
+    let finalWeights = tangency;
+    if (hasZero) {
+      const activeIdx = tangency
+        .map((w, i) => (w > EPS ? i : -1))
+        .filter((i) => i >= 0);
+      if (activeIdx.length > 0) {
+        const equal = 100 / activeIdx.length;
+        finalWeights = tangency.map((_, i) => (activeIdx.includes(i) ? equal : 0));
+      }
+    }
+    setAssets((prev) => prev.map((a, i) => ({ ...a, weight: finalWeights[i] ?? a.weight })));
     toast.success("Applied tangency-portfolio weights");
   };
 
