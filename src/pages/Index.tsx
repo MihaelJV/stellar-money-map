@@ -233,14 +233,18 @@ const Index = () => {
     return map;
   }, [assets, stdDevs]);
 
-  // Shrinkage toward market prior: blend arithmetic estimate with market baseline
+  // Shrinkage toward market prior: blend arithmetic estimate with market baseline.
+  // Both sides use arithmetic expected returns so the blend is on a consistent scale.
   const blendedReturns = useMemo(() => {
+    const marketStdDev = marketMonthly ? annualizedStdDev(marketMonthly) : 0;
+    const marketArith = arithmeticExpected(marketCagr, marketStdDev);
     const map: Record<string, number> = {};
     for (const a of assets) {
-      map[a.ticker] = shrinkage * (arithReturns[a.ticker] ?? 0) + (1 - shrinkage) * marketCagr;
+      map[a.ticker] = shrinkage * (arithReturns[a.ticker] ?? 0) + (1 - shrinkage) * marketArith;
     }
     return map;
-  }, [assets, arithReturns, shrinkage, marketCagr]);
+  }, [assets, arithReturns, shrinkage, marketCagr, marketMonthly]);
+
 
   // Portfolio expected return (blended arithmetic, used for optimizer & display)
   const portfolioReturn = useMemo(
