@@ -109,7 +109,7 @@ const Index = () => {
   useEffect(() => {
     setColorfulScenarios((prev) => {
       const next = [...prev];
-      while (next.length < scenarioYears) next.push("bullish");
+      while (next.length < scenarioYears) next.push("sideways");
       next.length = scenarioYears;
       return next;
     });
@@ -396,7 +396,7 @@ const Index = () => {
   };
 
   const baselineScenarios = useMemo<Scenario[]>(
-    () => Array(scenarioYears).fill("bullish"),
+    () => Array(scenarioYears).fill("sideways"),
     [scenarioYears],
   );
   const baselineRows = useMemo(() => buildScenarioRows(baselineScenarios), [baselineScenarios, portfolioReturn, portfolioStdDev, initialValue]);
@@ -985,7 +985,7 @@ const Index = () => {
             {/* Baseline + Colorful tables */}
             <div className="grid gap-6 xl:grid-cols-2">
               <ScenarioTable
-                title="Baseline (bullish)"
+                title="Baseline (sideways)"
                 rows={baselineRows}
                 editable={false}
               />

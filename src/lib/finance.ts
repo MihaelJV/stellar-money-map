@@ -185,7 +185,7 @@ export function constrainWeights(
   if (s <= 1e-12) return null;
   x = x.map((v) => v / s);
   // If cap * n < 1, infeasible — set every asset to 1/n (cap will be hit anyway)
-  if (cap * n < 1 - 1e-9) return Array(n).fill(1 / n);
+  if (cap * n < 1 - 1e-9) return null;
   for (let iter = 0; iter < 100; iter++) {
     const over = x.map((v) => v > cap);
     if (!over.some(Boolean)) break;
@@ -204,27 +204,18 @@ export function constrainWeights(
 }
 
 /**
- * Per-scenario shocks applied to the portfolio's arithmetic expected return,
+ * Per-scenario shock applied to the portfolio's arithmetic expected return,
  * scaled by portfolio volatility:
  *   μ_scenario = μ_p + kMu · σ_p
- * `kSigma` is reserved for future fan-chart / dispersion use.
  */
-export const SCENARIO_SHOCKS: Record<Scenario, { kMu: number; kSigma: number }> = {
-  boom:      { kMu:  1.0, kSigma: 0.9 },
-  bullish:   { kMu:  0.5, kSigma: 1.0 },
-  sideways:  { kMu:  0.0, kSigma: 1.0 },
-  bearish:   { kMu: -0.75, kSigma: 1.3 },
-  recession: { kMu: -1.5, kSigma: 1.6 },
+export const SCENARIO_SHOCKS: Record<Scenario, { kMu: number }> = {
+  boom:      { kMu:  1.0 },
+  bullish:   { kMu:  0.5 },
+  sideways:  { kMu:  0.0 },
+  bearish:   { kMu: -0.75 },
+  recession: { kMu: -1.5 },
 };
 
-/** @deprecated retained for backwards compatibility; new code uses SCENARIO_SHOCKS. */
-export const SCENARIO_MULTIPLIERS = {
-  boom: 1.2,
-  bullish: 1,
-  sideways: 0.5,
-  bearish: -0.2,
-  recession: -1,
-} as const;
 
 export type Scenario = "boom" | "bullish" | "sideways" | "bearish" | "recession";
 
