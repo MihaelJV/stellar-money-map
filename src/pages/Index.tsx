@@ -109,7 +109,7 @@ const Index = () => {
   useEffect(() => {
     setColorfulScenarios((prev) => {
       const next = [...prev];
-      while (next.length < scenarioYears) next.push("bullish");
+      while (next.length < scenarioYears) next.push("sideways");
       next.length = scenarioYears;
       return next;
     });
