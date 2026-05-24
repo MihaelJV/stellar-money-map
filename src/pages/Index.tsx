@@ -16,7 +16,7 @@ import { fetchQuoteInfo, type QuoteInfo } from "@/lib/quoteInfo";
 import {
   cagr, monthlyReturns, correlationMatrix, annualizedStdDev, tangencyWeights, beta,
   arithmeticExpected, constrainWeights,
-  SCENARIO_MULTIPLIERS, SCENARIO_LABELS, type Scenario,
+  SCENARIO_SHOCKS, SCENARIO_LABELS, type Scenario,
 } from "@/lib/finance";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
@@ -189,9 +189,14 @@ const Index = () => {
     let cancelled = false;
     (async () => {
       try {
-        const points = await fetchHistory(rfTicker, new Date(startDate), new Date(endDate));
+        // Rf is a forward-looking input — fetch the most recent Treasury close
+        // independent of the historical price window. Lookback of 30 days
+        // guarantees at least one quote even on weekends / holidays.
+        const today = new Date();
+        const rfStart = new Date(today);
+        rfStart.setDate(rfStart.getDate() - 30);
+        const points = await fetchHistory(rfTicker, rfStart, today);
         if (!cancelled && points.length > 0) {
-          // Yahoo treasury yield indices quote yield in percent
           setRiskFreeRate(points[points.length - 1].close / 100);
         }
       } catch {
@@ -199,7 +204,8 @@ const Index = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [rfTicker, startDate, endDate]);
+  }, [rfTicker]);
+
 
   // Market monthly returns + CAGR (S&P 500) — used for beta and the shrinkage prior
   const [marketMonthly, setMarketMonthly] = useState<Map<string, number> | null>(null);
@@ -268,12 +274,31 @@ const Index = () => {
 
   const applyOptimise = () => {
     if (!tangency) {
-      toast.error("Cannot compute optimal weights (need ≥ 2 assets and a risk-free rate).");
+      toast.error(
+        "Optimiser could not find a positive long-only solution under the current cap. Try widening the per-asset cap or removing highly correlated assets.",
+      );
       return;
     }
     setAssets((prev) => prev.map((a, i) => ({ ...a, weight: tangency[i] ?? a.weight })));
     toast.success("Applied tangency-portfolio weights");
   };
+
+  // Sharpe ratio of the current weighted portfolio
+  const sharpeRatio = useMemo(() => {
+    if (riskFreeRate === null || portfolioStdDev <= 0) return null;
+    return (portfolioReturn - riskFreeRate) / portfolioStdDev;
+  }, [portfolioReturn, portfolioStdDev, riskFreeRate]);
+
+  // Sample size = number of months common to all assets' monthly-return series
+  const sampleMonths = useMemo(() => {
+    if (assets.length === 0) return 0;
+    const sets = assets.map((a) => new Set(a.monthly.keys()));
+    let common = 0;
+    for (const k of sets[0]) {
+      if (sets.every((s) => s.has(k))) common++;
+    }
+    return common;
+  }, [assets]);
 
   const yearsToDouble = portfolioCagr > 0 ? 70 / (portfolioCagr * 100) : Infinity;
 
@@ -316,20 +341,9 @@ const Index = () => {
         toast.error("Weight must be between 0 and 100");
         return prev;
       }
-      // Special case: editing the last asset adjusts the one immediately above
-      if (idx === prev.length - 1 && prev.length > 1) {
-        const othersAboveSum = prev.slice(0, idx - 1).reduce((s, a) => s + a.weight, 0);
-        const adjusted = 100 - othersAboveSum - w;
-        if (adjusted < -0.0001) {
-          toast.error("Weights above + this entry exceed 100%");
-          return prev;
-        }
-        return prev.map((a, i) => {
-          if (i === idx) return { ...a, weight: w };
-          if (i === idx - 1) return { ...a, weight: Math.max(0, adjusted) };
-          return a;
-        });
-      }
+      // Rows above `idx` stay fixed; remaining weight is split equally across rows below.
+      // For the last row, belowCount=0 — `w` is accepted as-is and Total Weight tile
+      // reflects any deviation from 100% so the user can rebalance manually.
       const aboveSum = prev.slice(0, idx).reduce((s, a) => s + a.weight, 0);
       const remaining = 100 - aboveSum - w;
       if (remaining < -0.0001) {
@@ -363,14 +377,17 @@ const Index = () => {
     }
   }, [assets, startDate, endDate]);
 
-  // Build scenario tables — compound using portfolio CAGR (geometric)
+  // Build scenario tables — annual return shocked off portfolio's arithmetic μ
+  // by k_μ · σ_p (volatility-scaled), then compounded across the horizon.
   const buildScenarioRows = (scenarios: Scenario[]) => {
-    const rows = [];
+    const rows: ScenarioRow[] = [];
     let value = initialValue;
     let cumulative = 1;
     for (let y = 0; y < scenarios.length; y++) {
       const s = scenarios[y];
-      const annual = portfolioCagr * SCENARIO_MULTIPLIERS[s];
+      const { kMu } = SCENARIO_SHOCKS[s];
+      // Floor at -95% to keep arithmetic projections numerically sane
+      const annual = Math.max(-0.95, portfolioReturn + kMu * portfolioStdDev);
       cumulative *= 1 + annual;
       value *= 1 + annual;
       rows.push({ year: y + 1, scenario: s, annual, cumulative: cumulative - 1, value });
@@ -382,8 +399,8 @@ const Index = () => {
     () => Array(scenarioYears).fill("bullish"),
     [scenarioYears],
   );
-  const baselineRows = useMemo(() => buildScenarioRows(baselineScenarios), [baselineScenarios, portfolioCagr, initialValue]);
-  const colorfulRows = useMemo(() => buildScenarioRows(colorfulScenarios), [colorfulScenarios, portfolioCagr, initialValue]);
+  const baselineRows = useMemo(() => buildScenarioRows(baselineScenarios), [baselineScenarios, portfolioReturn, portfolioStdDev, initialValue]);
+  const colorfulRows = useMemo(() => buildScenarioRows(colorfulScenarios), [colorfulScenarios, portfolioReturn, portfolioStdDev, initialValue]);
 
   const compareData = useMemo(() => {
     const data: { year: number | string; baseline: number; colorful: number }[] = [
@@ -550,6 +567,42 @@ const Index = () => {
                     {riskFreeRate === null ? "—" : pct(riskFreeRate)}
                   </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    Sharpe ratio
+                    <HoverCard openDelay={150}>
+                      <HoverCardTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="What is Sharpe ratio?"
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 text-xs leading-relaxed">
+                        <p className="mb-2">
+                          Sharpe ratio measures return earned per unit of total risk.
+                        </p>
+                        <p className="font-mono text-muted-foreground">
+                          Sharpe = (E[Rₚ] − R_f) / σₚ
+                        </p>
+                        <p className="mt-2 text-muted-foreground">
+                          Higher is better. The Optimise button targets the
+                          allocation that maximises this ratio (tangency portfolio).
+                        </p>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </span>
+                  <span className={`font-semibold ${sharpeRatio !== null && sharpeRatio >= 0 ? "text-bull" : "text-bear"}`}>
+                    {sharpeRatio === null ? "—" : sharpeRatio.toFixed(2)}
+                  </span>
+                </div>
+                {sampleMonths > 0 && sampleMonths < 24 && (
+                  <p className="text-xs text-muted-foreground">
+                    ⚠ Estimates based on {sampleMonths} monthly observations — covariance and β may be unstable. Consider a longer window.
+                  </p>
+                )}
 
                 {/* Advanced optimiser settings */}
                 <div className="border-t border-border pt-3">

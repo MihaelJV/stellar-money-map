@@ -61,7 +61,7 @@ The target audience is finance students, self-directed investors, and developers
 ### Visualisation
 - Allocation **pie chart** of current portfolio weights.
 - **Correlation table**, **standard-deviation table**, **covariance table**, **beta table**.
-- **Scenario analysis** bar chart projecting portfolio outcomes under five macro regimes.
+- **Scenario analysis** line chart projecting portfolio outcomes under five macro regimes.
 - Responsive, theme-aware UI built with shadcn/ui components.
 
 ### UX
@@ -141,7 +141,7 @@ Even so, the output should be treated as **exploratory scenarios, not prediction
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS 3, shadcn/ui (Radix primitives) |
 | Charts | Recharts |
-| Forms & validation | react-hook-form, Zod |
+
 | Async / data | @tanstack/react-query |
 | Routing | react-router-dom (HashRouter) |
 | Notifications | sonner, custom toast |
