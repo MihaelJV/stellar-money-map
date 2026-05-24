@@ -67,6 +67,7 @@ The target audience is finance students, self-directed investors, and developers
 ### UX
 - Adjustable **investment horizon** (years) that drives both the data lookback and the risk-free benchmark choice.
 - Hover cards with formulas and plain-English explanations on every non-trivial metric (Sharpe, Beta, portfolio σ, optimiser).
+- **Ticker metadata tooltip** — an (i) icon next to each ticker reveals the full company name, ISIN, exchange, currency, market cap, and 3-month average daily volume, fetched on demand from a `quote-info` edge function (Yahoo Finance `quoteSummary` with cookie+crumb auth, ISIN resolved via Markets Insider with an OpenFIGI fallback).
 - Toast notifications for fetch errors and optimisation outcomes.
 
 > Functionality not currently in the repo (Monte Carlo simulation, full efficient-frontier curve plot, Black-Litterman, backtesting) is listed under [Future Improvements](#future-improvements).
@@ -202,6 +203,7 @@ The `stooq-proxy` Edge Function lives in `supabase/functions/stooq-proxy/` and i
 │   ├── lib/
 │   │   ├── finance.ts         # CAGR, σ, correlation, covariance, beta, tangency solver, constraints
 │   │   ├── stooq.ts           # Edge-function client + ticker normalisation
+│   │   ├── quoteInfo.ts       # Client for the quote-info edge function (ticker metadata)
 │   │   └── utils.ts
 │   ├── components/ui/         # shadcn/ui primitives
 │   ├── integrations/supabase/ # Auto-generated client + types (do not edit)
@@ -211,7 +213,9 @@ The `stooq-proxy` Edge Function lives in `supabase/functions/stooq-proxy/` and i
 │   ├── main.tsx
 │   └── index.css              # Design tokens (HSL)
 ├── supabase/
-│   ├── functions/stooq-proxy/ # Yahoo Finance CORS proxy (Deno)
+│   ├── functions/
+│   │   ├── stooq-proxy/       # Yahoo Finance price-history CORS proxy (Deno)
+│   │   └── quote-info/        # Yahoo quoteSummary + ISIN lookup (Markets Insider / OpenFIGI)
 │   └── config.toml
 ├── tailwind.config.ts
 ├── vite.config.ts
