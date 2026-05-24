@@ -42,6 +42,52 @@ const yearsAgoISO = (n: number) => {
 const pct = (x: number, digits = 2) => `${(x * 100).toFixed(digits)}%`;
 const money = (x: number) => x.toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
+const compactNum = (x: number | null | undefined) => {
+  if (x === null || x === undefined || !isFinite(x)) return "—";
+  const abs = Math.abs(x);
+  if (abs >= 1e12) return `${(x / 1e12).toFixed(2)}T`;
+  if (abs >= 1e9) return `${(x / 1e9).toFixed(2)}B`;
+  if (abs >= 1e6) return `${(x / 1e6).toFixed(2)}M`;
+  if (abs >= 1e3) return `${(x / 1e3).toFixed(2)}K`;
+  return x.toLocaleString();
+};
+
+const TickerInfoBadge = ({ ticker, info }: { ticker: string; info?: QuoteInfo | null }) => (
+  <HoverCard openDelay={150}>
+    <HoverCardTrigger asChild>
+      <button
+        type="button"
+        aria-label={`About ${ticker}`}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+    </HoverCardTrigger>
+    <HoverCardContent className="w-72 text-xs leading-relaxed">
+      {!info ? (
+        <p className="text-muted-foreground">No metadata available for {ticker}.</p>
+      ) : (
+        <>
+          {info.name && <p className="mb-2 font-semibold">{info.name}</p>}
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <dt className="text-muted-foreground">ISIN</dt>
+            <dd className="font-mono">{info.isin ?? "—"}</dd>
+            <dt className="text-muted-foreground">Exchange</dt>
+            <dd>{info.exchange ?? "—"}</dd>
+            <dt className="text-muted-foreground">Currency</dt>
+            <dd>{info.currency ?? "—"}</dd>
+            <dt className="text-muted-foreground">Market cap</dt>
+            <dd>{compactNum(info.marketCap)}{info.currency ? ` ${info.currency}` : ""}</dd>
+            <dt className="text-muted-foreground">Avg daily vol</dt>
+            <dd>{compactNum(info.avgVolume)}</dd>
+          </dl>
+        </>
+      )}
+    </HoverCardContent>
+  </HoverCard>
+);
+
+
 const Index = () => {
   const [startDate, setStartDate] = useState(yearsAgoISO(10));
   const [endDate, setEndDate] = useState(todayISO());
@@ -423,8 +469,11 @@ const Index = () => {
               <div className="space-y-3">
                 {assets.map((a, i) => (
                   <div key={a.ticker} className="flex items-center gap-3">
-                    <div className="h-3 w-3 rounded-sm" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
-                    <span className="w-20 font-mono text-sm font-semibold">{a.ticker}</span>
+                    <div className="flex w-20 items-center gap-1">
+                      <span className="font-mono text-sm font-semibold">{a.ticker}</span>
+                      <TickerInfoBadge ticker={a.ticker} info={a.info} />
+                    </div>
+
                     <WeightInput
                       value={a.weight}
                       onCommit={(v) => setWeight(a.ticker, v)}
