@@ -420,21 +420,24 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="border-b border-border bg-gradient-card">
-        <div className="container py-8">
+      <div className="border-b border-border/60 bg-gradient-card">
+        <div className="container flex items-center justify-between py-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary shadow-glow">
-              <TrendingUp className="h-5 w-5 text-primary-foreground" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-primary ring-1 ring-primary/20">
+              <TrendingUp className="h-4.5 w-4.5 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Portfolio Scenario Lab</h1>
-              <p className="text-sm text-muted-foreground">Stress-test allocations across market regimes</p>
+              <h1 className="text-xl font-semibold tracking-tight">Portfolio Scenario Lab</h1>
+              <p className="text-xs text-muted-foreground">Stress-test allocations across market regimes</p>
             </div>
           </div>
+          <span className="hidden rounded-full border border-border/60 bg-secondary/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground sm:inline-block">
+            v1 · educational tool
+          </span>
         </div>
       </div>
 
-      <main className="container space-y-6 py-8">
+      <main className="container space-y-4 py-6">
         {/* Date range */}
         <Card className="bg-gradient-card p-6 shadow-card">
           <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
