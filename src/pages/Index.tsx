@@ -567,6 +567,42 @@ const Index = () => {
                     {riskFreeRate === null ? "—" : pct(riskFreeRate)}
                   </span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    Sharpe ratio
+                    <HoverCard openDelay={150}>
+                      <HoverCardTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="What is Sharpe ratio?"
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 text-xs leading-relaxed">
+                        <p className="mb-2">
+                          Sharpe ratio measures return earned per unit of total risk.
+                        </p>
+                        <p className="font-mono text-muted-foreground">
+                          Sharpe = (E[Rₚ] − R_f) / σₚ
+                        </p>
+                        <p className="mt-2 text-muted-foreground">
+                          Higher is better. The Optimise button targets the
+                          allocation that maximises this ratio (tangency portfolio).
+                        </p>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </span>
+                  <span className={`font-semibold ${sharpeRatio !== null && sharpeRatio >= 0 ? "text-bull" : "text-bear"}`}>
+                    {sharpeRatio === null ? "—" : sharpeRatio.toFixed(2)}
+                  </span>
+                </div>
+                {sampleMonths > 0 && sampleMonths < 24 && (
+                  <p className="text-xs text-muted-foreground">
+                    ⚠ Estimates based on {sampleMonths} monthly observations — covariance and β may be unstable. Consider a longer window.
+                  </p>
+                )}
 
                 {/* Advanced optimiser settings */}
                 <div className="border-t border-border pt-3">
