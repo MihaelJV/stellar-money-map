@@ -185,6 +185,7 @@ const Index = () => {
   }, [scenarioYears]);
 
   const [riskFreeRate, setRiskFreeRate] = useState<number | null>(null);
+  const [rfAsOf, setRfAsOf] = useState<Date | null>(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -197,14 +198,17 @@ const Index = () => {
         rfStart.setDate(rfStart.getDate() - 30);
         const points = await fetchHistory(rfTicker, rfStart, today);
         if (!cancelled && points.length > 0) {
-          setRiskFreeRate(points[points.length - 1].close / 100);
+          const last = points[points.length - 1];
+          setRiskFreeRate(last.close / 100);
+          setRfAsOf(last.date);
         }
       } catch {
-        if (!cancelled) setRiskFreeRate(null);
+        if (!cancelled) { setRiskFreeRate(null); setRfAsOf(null); }
       }
     })();
     return () => { cancelled = true; };
   }, [rfTicker]);
+
 
 
   // Market monthly returns + CAGR (S&P 500) — used for beta and the shrinkage prior
@@ -417,18 +421,20 @@ const Index = () => {
   const colorfulRows = useMemo(() => buildScenarioRows(colorfulScenarios), [colorfulScenarios, portfolioReturn, portfolioStdDev, initialValue]);
 
   const compareData = useMemo(() => {
-    const data: { year: number | string; baseline: number; colorful: number }[] = [
-      { year: 0, baseline: initialValue, colorful: initialValue },
+    const data: { year: number | string; baseline: number; colorful: number; riskFree: number | null }[] = [
+      { year: 0, baseline: initialValue, colorful: initialValue, riskFree: riskFreeRate !== null ? initialValue : null },
     ];
     for (let i = 0; i < scenarioYears; i++) {
       data.push({
         year: i + 1,
         baseline: baselineRows[i]?.value ?? initialValue,
         colorful: colorfulRows[i]?.value ?? initialValue,
+        riskFree: riskFreeRate !== null ? initialValue * Math.pow(1 + riskFreeRate, i + 1) : null,
       });
     }
     return data;
-  }, [baselineRows, colorfulRows, scenarioYears, initialValue]);
+  }, [baselineRows, colorfulRows, scenarioYears, initialValue, riskFreeRate]);
+
 
   const pieData = assets.map((a) => ({ name: a.ticker, value: a.weight }));
 
@@ -1031,9 +1037,27 @@ const Index = () => {
                   <Legend />
                   <Line type="monotone" dataKey="baseline" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ r: 3 }} name="Baseline" />
                   <Line type="monotone" dataKey="colorful" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ r: 3 }} name="Custom path" />
+                  <Line
+                    type="monotone"
+                    dataKey="riskFree"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    name={`Risk-free (${rfTicker})`}
+                    connectNulls
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Risk-free reference:{" "}
+              <span className="font-medium text-foreground">{rfLabel}</span>
+              {" · "}latest yield {riskFreeRate !== null ? pct(riskFreeRate) : "—"}
+              {rfAsOf && ` · as of ${rfAsOf.toISOString().slice(0, 10)}`}
+              {" · "}source Yahoo Finance via stooq-proxy. Compounded as initial × (1 + Rf)^t.
+            </p>
+
           </Card>
         )}
 
