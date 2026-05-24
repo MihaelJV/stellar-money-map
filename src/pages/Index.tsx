@@ -1025,11 +1025,11 @@ const Index = () => {
 
         {assets.length === 0 && (
           <Card className="bg-gradient-card p-8 text-center shadow-card border border-border/60">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Plus className="h-6 w-6 text-primary" />
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
+              <Plus className="h-5 w-5 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold">Start by adding tickers</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <h3 className="text-sm font-semibold">Start by adding tickers</h3>
+            <p className="mt-1.5 text-xs text-muted-foreground">
               Build a portfolio, see weighted returns, then run scenario simulations.
             </p>
           </Card>
