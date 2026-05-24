@@ -185,7 +185,7 @@ export function constrainWeights(
   if (s <= 1e-12) return null;
   x = x.map((v) => v / s);
   // If cap * n < 1, infeasible — set every asset to 1/n (cap will be hit anyway)
-  if (cap * n < 1 - 1e-9) return Array(n).fill(1 / n);
+  if (cap * n < 1 - 1e-9) return null;
   for (let iter = 0; iter < 100; iter++) {
     const over = x.map((v) => v > cap);
     if (!over.some(Boolean)) break;
