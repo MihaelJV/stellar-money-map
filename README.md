@@ -131,6 +131,17 @@ Mean–variance optimisation is notoriously sensitive to its inputs — tiny cha
 
 Even so, the output should be treated as **exploratory scenarios, not predictions**. Institutional portfolio construction typically layers in factor models, Black-Litterman views, robust/resampled covariance estimators, and transaction-cost-aware solvers — none of which are claimed here.
 
+### Known approximations
+
+The following simplifications are intentional. They keep the math transparent for an educational tool but would be replaced in a production-grade implementation:
+
+- **Volatility correction uses simple-return σ.** The identity `μ_arith ≈ CAGR + σ²/2` is exact when σ is the standard deviation of log-returns. Portfolio Lab uses annualised simple-return σ, which is the standard practical approximation.
+- **Single-asset displayed risk scales linearly with weight.** For a portfolio containing one asset with weight w, displayed σ_p = (w/100)·σ. The displayed μ and Sharpe are therefore correct only when w = 100%; partial weights implicitly assume the remainder is uninvested rather than held as cash earning R_f.
+- **Scenarios are deterministic stress bands, not stochastic paths.** Each scenario applies a fixed multiple of σ_p as a shift to μ_p (`μ_scenario = μ_p + k·σ_p`). The Boom / Bullish / Average / Bearish / Recession labels describe directional stress magnitudes, not simulated macro regimes.
+- **Doubling time uses the Rule of 70.** This is the continuous-compounding approximation (`t ≈ 70 / r%`). The Rule of 72 (discrete compounding) would give marginally different results in the 6–10% range.
+
+
+
 ---
 
 ## Tech Stack

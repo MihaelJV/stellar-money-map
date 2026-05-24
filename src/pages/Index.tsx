@@ -233,14 +233,18 @@ const Index = () => {
     return map;
   }, [assets, stdDevs]);
 
-  // Shrinkage toward market prior: blend arithmetic estimate with market baseline
+  // Shrinkage toward market prior: blend arithmetic estimate with market baseline.
+  // Both sides use arithmetic expected returns so the blend is on a consistent scale.
   const blendedReturns = useMemo(() => {
+    const marketStdDev = marketMonthly ? annualizedStdDev(marketMonthly) : 0;
+    const marketArith = arithmeticExpected(marketCagr, marketStdDev);
     const map: Record<string, number> = {};
     for (const a of assets) {
-      map[a.ticker] = shrinkage * (arithReturns[a.ticker] ?? 0) + (1 - shrinkage) * marketCagr;
+      map[a.ticker] = shrinkage * (arithReturns[a.ticker] ?? 0) + (1 - shrinkage) * marketArith;
     }
     return map;
-  }, [assets, arithReturns, shrinkage, marketCagr]);
+  }, [assets, arithReturns, shrinkage, marketCagr, marketMonthly]);
+
 
   // Portfolio expected return (blended arithmetic, used for optimizer & display)
   const portfolioReturn = useMemo(
@@ -279,21 +283,17 @@ const Index = () => {
       );
       return;
     }
-    // If the optimiser zeroes out any asset, equally distribute 100% across the
-    // remaining (non-zero) assets so weights still sum to exactly 100.
+    // Proportionally renormalise non-zero optimiser weights so they sum to 100,
+    // preserving the relative magnitudes from the Σ⁻¹(μ − rf) solution.
     const EPS = 1e-6;
-    const hasZero = tangency.some((w) => w <= EPS);
-    let finalWeights = tangency;
-    if (hasZero) {
-      const activeIdx = tangency
-        .map((w, i) => (w > EPS ? i : -1))
-        .filter((i) => i >= 0);
-      if (activeIdx.length > 0) {
-        const equal = 100 / activeIdx.length;
-        finalWeights = tangency.map((_, i) => (activeIdx.includes(i) ? equal : 0));
-      }
-    }
+    const survivors = tangency.map((w) => (w > EPS ? w : 0));
+    const s = survivors.reduce((a, b) => a + b, 0);
+    const finalWeights =
+      s > 0
+        ? survivors.map((w) => (w / s) * 100)
+        : tangency.map(() => 100 / tangency.length);
     setAssets((prev) => prev.map((a, i) => ({ ...a, weight: finalWeights[i] ?? a.weight })));
+
     toast.success("Applied tangency-portfolio weights");
   };
 
