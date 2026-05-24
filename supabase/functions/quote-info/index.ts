@@ -53,11 +53,30 @@ async function getCrumb(): Promise<{ cookie: string; crumb: string } | null> {
 }
 
 async function tryIsin(symbol: string): Promise<string | null> {
+  // Strip Yahoo exchange suffix (e.g. VOD.L -> VOD) for the lookup.
+  const base = symbol.split(".")[0].split("-")[0];
+
+  // Primary: Markets Insider suggest endpoint returns ISIN inside the
+  // pipe-separated Keywords field, e.g. "AAPL|US0378331005|AAPL||AAPL".
+  try {
+    const r = await fetch(
+      `https://markets.businessinsider.com/ajax/SearchController_Suggest?max_results=1&query=${encodeURIComponent(base)}`,
+      { headers: { "User-Agent": UA } },
+    );
+    if (r.ok) {
+      const text = await r.text();
+      const m = text.match(/\|([A-Z]{2}[A-Z0-9]{9}\d)\|/);
+      if (m?.[1]) return m[1];
+    }
+  } catch { /* fall through */ }
+
+  // Fallback: OpenFIGI mapping (free tier rarely returns ISIN, but kept
+  // as a safety net for instruments missing from Markets Insider).
   try {
     const r = await fetch("https://api.openfigi.com/v3/mapping", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify([{ idType: "TICKER", idValue: symbol }]),
+      body: JSON.stringify([{ idType: "TICKER", idValue: base }]),
     });
     if (!r.ok) return null;
     const data = await r.json();
