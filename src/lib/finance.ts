@@ -171,6 +171,12 @@ export function arithmeticExpected(cagrVal: number, stdDev: number): number {
  * Constrain weights to [0 or -cap, cap] with sum = 1 via iterative water-filling.
  * `allowShort=false` clips negatives to 0 first.
  */
+/**
+ * Constrain weights to [0, cap] (or [-cap, cap] if allowShort) with Σwᵢ = 1
+ * via iterative water-filling. Returns null when no feasible long-only
+ * solution exists with positive mass — callers should surface this to the UI
+ * rather than silently substituting equal weights.
+ */
 export function constrainWeights(
   w: number[],
   cap: number,
@@ -180,11 +186,7 @@ export function constrainWeights(
   if (n === 0) return null;
   let x = allowShort ? [...w] : w.map((v) => Math.max(0, v));
   let s = x.reduce((a, b) => a + b, 0);
-  if (s <= 1e-12) {
-    // fallback to equal weights, capped
-    const eq = Math.min(cap, 1 / n);
-    return Array(n).fill(eq).map((v, _i, arr) => v / arr.reduce((a, b) => a + b, 0));
-  }
+  if (s <= 1e-12) return null;
   x = x.map((v) => v / s);
   // If cap * n < 1, infeasible — set every asset to 1/n (cap will be hit anyway)
   if (cap * n < 1 - 1e-9) return Array(n).fill(1 / n);
@@ -205,6 +207,21 @@ export function constrainWeights(
   return x;
 }
 
+/**
+ * Per-scenario shocks applied to the portfolio's arithmetic expected return,
+ * scaled by portfolio volatility:
+ *   μ_scenario = μ_p + kMu · σ_p
+ * `kSigma` is reserved for future fan-chart / dispersion use.
+ */
+export const SCENARIO_SHOCKS: Record<Scenario, { kMu: number; kSigma: number }> = {
+  boom:      { kMu:  1.0, kSigma: 0.9 },
+  bullish:   { kMu:  0.5, kSigma: 1.0 },
+  sideways:  { kMu:  0.0, kSigma: 1.0 },
+  bearish:   { kMu: -0.75, kSigma: 1.3 },
+  recession: { kMu: -1.5, kSigma: 1.6 },
+};
+
+/** @deprecated retained for backwards compatibility; new code uses SCENARIO_SHOCKS. */
 export const SCENARIO_MULTIPLIERS = {
   boom: 1.2,
   bullish: 1,
@@ -213,7 +230,8 @@ export const SCENARIO_MULTIPLIERS = {
   recession: -1,
 } as const;
 
-export type Scenario = keyof typeof SCENARIO_MULTIPLIERS;
+export type Scenario = "boom" | "bullish" | "sideways" | "bearish" | "recession";
+
 
 export const SCENARIO_LABELS: Record<Scenario, string> = {
   boom: "Boom",
