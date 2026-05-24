@@ -1037,9 +1037,27 @@ const Index = () => {
                   <Legend />
                   <Line type="monotone" dataKey="baseline" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={{ r: 3 }} name="Baseline" />
                   <Line type="monotone" dataKey="colorful" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={{ r: 3 }} name="Custom path" />
+                  <Line
+                    type="monotone"
+                    dataKey="riskFree"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth={1.5}
+                    strokeDasharray="4 4"
+                    dot={false}
+                    name={`Risk-free (${rfTicker})`}
+                    connectNulls
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Risk-free reference:{" "}
+              <span className="font-medium text-foreground">{rfLabel}</span>
+              {" · "}latest yield {riskFreeRate !== null ? pct(riskFreeRate) : "—"}
+              {rfAsOf && ` · as of ${rfAsOf.toISOString().slice(0, 10)}`}
+              {" · "}source Yahoo Finance via stooq-proxy. Compounded as initial × (1 + Rf)^t.
+            </p>
+
           </Card>
         )}
 
