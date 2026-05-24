@@ -1002,7 +1002,7 @@ const Index = () => {
             {/* Baseline + Colorful tables */}
             <div className="grid gap-6 xl:grid-cols-2">
               <ScenarioTable
-                title="Baseline (sideways)"
+                title="Baseline (average)"
                 rows={baselineRows}
                 editable={false}
               />
