@@ -420,23 +420,26 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="border-b border-border bg-gradient-card">
-        <div className="container py-8">
+      <div className="border-b border-border/60 bg-gradient-card">
+        <div className="container flex items-center justify-between py-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary shadow-glow">
-              <TrendingUp className="h-5 w-5 text-primary-foreground" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-md bg-gradient-primary ring-1 ring-primary/20">
+              <TrendingUp className="h-[18px] w-[18px] text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Portfolio Scenario Lab</h1>
-              <p className="text-sm text-muted-foreground">Stress-test allocations across market regimes</p>
+              <h1 className="text-xl font-semibold tracking-tight">Portfolio Scenario Lab</h1>
+              <p className="text-xs text-muted-foreground">Stress-test allocations across market regimes</p>
             </div>
           </div>
+          <span className="hidden rounded-full border border-border/60 bg-secondary/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground sm:inline-block">
+            v1 · educational tool
+          </span>
         </div>
       </div>
 
-      <main className="container space-y-6 py-8">
+      <main className="container space-y-4 py-6">
         {/* Date range */}
-        <Card className="bg-gradient-card p-6 shadow-card">
+        <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
           <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
             <div className="space-y-2">
               <Label htmlFor="start">Start date</Label>
@@ -453,7 +456,7 @@ const Index = () => {
         </Card>
 
         {/* Add ticker */}
-        <Card className="bg-gradient-card p-6 shadow-card">
+        <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
           <div className="flex items-end gap-3">
             <div className="flex-1 space-y-2">
               <Label htmlFor="ticker">Add ticker</Label>
@@ -478,8 +481,8 @@ const Index = () => {
         {/* Portfolio composition */}
         {assets.length > 0 && (
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="bg-gradient-card p-6 shadow-card">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
+              <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <Activity className="h-4 w-4 text-primary" />
                 Allocation
               </h2>
@@ -697,8 +700,8 @@ const Index = () => {
               </div>
             </Card>
 
-            <Card className="bg-gradient-card p-6 shadow-card">
-              <h2 className="mb-4 text-lg font-semibold">Portfolio structure</h2>
+            <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
+              <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Portfolio structure</h2>
               <div className="h-72">
                 <ResponsiveContainer>
                   <PieChart>
@@ -762,8 +765,8 @@ const Index = () => {
               </div>
             </Card>
 
-            <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-              <h2 className="mb-4 text-lg font-semibold">Asset returns</h2>
+            <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+              <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Asset returns</h2>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -795,8 +798,8 @@ const Index = () => {
             </Card>
 
             {correlations && (
-              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-                <h2 className="mb-4 text-lg font-semibold">Monthly return correlations</h2>
+              <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly return correlations</h2>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -828,8 +831,8 @@ const Index = () => {
             )}
 
             {assets.length > 0 && (
-              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-                <h2 className="mb-4 text-lg font-semibold">Annualized standard deviation</h2>
+              <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Annualized standard deviation</h2>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -850,8 +853,8 @@ const Index = () => {
             )}
 
             {covariances && (
-              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-                <h2 className="mb-4 text-lg font-semibold">Covariance matrix (annualized)</h2>
+              <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Covariance matrix (annualized)</h2>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -883,8 +886,8 @@ const Index = () => {
             )}
 
             {assets.length > 0 && (
-              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+              <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+                <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Beta vs market (S&amp;P 500)
                   <HoverCard openDelay={150}>
                     <HoverCardTrigger asChild>
@@ -943,10 +946,10 @@ const Index = () => {
 
         {/* Scenario analysis */}
         {assets.length > 0 && (
-          <Card className="bg-gradient-card p-6 shadow-card">
+          <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
             <div className="mb-6 flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold">Scenario analysis</h2>
+              <Sparkles className="h-4 w-4 text-primary" />
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Scenario analysis</h2>
             </div>
 
             <div className="mb-6 grid gap-4 md:grid-cols-3">
@@ -1021,12 +1024,12 @@ const Index = () => {
         )}
 
         {assets.length === 0 && (
-          <Card className="bg-gradient-card p-12 text-center shadow-card">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-              <Plus className="h-6 w-6 text-primary" />
+          <Card className="bg-gradient-card p-8 text-center shadow-card border border-border/60">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
+              <Plus className="h-5 w-5 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold">Start by adding tickers</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <h3 className="text-sm font-semibold">Start by adding tickers</h3>
+            <p className="mt-1.5 text-xs text-muted-foreground">
               Build a portfolio, see weighted returns, then run scenario simulations.
             </p>
           </Card>
