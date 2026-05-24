@@ -274,12 +274,31 @@ const Index = () => {
 
   const applyOptimise = () => {
     if (!tangency) {
-      toast.error("Cannot compute optimal weights (need ≥ 2 assets and a risk-free rate).");
+      toast.error(
+        "Optimiser could not find a positive long-only solution under the current cap. Try widening the per-asset cap or removing highly correlated assets.",
+      );
       return;
     }
     setAssets((prev) => prev.map((a, i) => ({ ...a, weight: tangency[i] ?? a.weight })));
     toast.success("Applied tangency-portfolio weights");
   };
+
+  // Sharpe ratio of the current weighted portfolio
+  const sharpeRatio = useMemo(() => {
+    if (riskFreeRate === null || portfolioStdDev <= 0) return null;
+    return (portfolioReturn - riskFreeRate) / portfolioStdDev;
+  }, [portfolioReturn, portfolioStdDev, riskFreeRate]);
+
+  // Sample size = number of months common to all assets' monthly-return series
+  const sampleMonths = useMemo(() => {
+    if (assets.length === 0) return 0;
+    const sets = assets.map((a) => new Set(a.monthly.keys()));
+    let common = 0;
+    for (const k of sets[0]) {
+      if (sets.every((s) => s.has(k))) common++;
+    }
+    return common;
+  }, [assets]);
 
   const yearsToDouble = portfolioCagr > 0 ? 70 / (portfolioCagr * 100) : Infinity;
 
