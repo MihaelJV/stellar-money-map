@@ -223,7 +223,7 @@ export type Scenario = "boom" | "bullish" | "sideways" | "bearish" | "recession"
 export const SCENARIO_LABELS: Record<Scenario, string> = {
   boom: "Boom",
   bullish: "Bullish",
-  sideways: "Sideways",
+  sideways: "Average",
   bearish: "Bearish",
   recession: "Recession",
 };
