@@ -469,10 +469,12 @@ const Index = () => {
               <div className="space-y-3">
                 {assets.map((a, i) => (
                   <div key={a.ticker} className="flex items-center gap-3">
-                    <div className="flex w-20 items-center gap-1">
+                    <div className="h-3 w-3 rounded-sm" style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />
+                    <div className="flex w-24 items-center gap-1">
                       <span className="font-mono text-sm font-semibold">{a.ticker}</span>
                       <TickerInfoBadge ticker={a.ticker} info={a.info} />
                     </div>
+
 
                     <WeightInput
                       value={a.weight}
