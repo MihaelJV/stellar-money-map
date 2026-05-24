@@ -141,7 +141,7 @@ Even so, the output should be treated as **exploratory scenarios, not prediction
 | Language | TypeScript 5 |
 | Styling | Tailwind CSS 3, shadcn/ui (Radix primitives) |
 | Charts | Recharts |
-| Forms & validation | react-hook-form, Zod |
+
 | Async / data | @tanstack/react-query |
 | Routing | react-router-dom (HashRouter) |
 | Notifications | sonner, custom toast |
