@@ -168,10 +168,6 @@ export function arithmeticExpected(cagrVal: number, stdDev: number): number {
 }
 
 /**
- * Constrain weights to [0 or -cap, cap] with sum = 1 via iterative water-filling.
- * `allowShort=false` clips negatives to 0 first.
- */
-/**
  * Constrain weights to [0, cap] (or [-cap, cap] if allowShort) with Σwᵢ = 1
  * via iterative water-filling. Returns null when no feasible long-only
  * solution exists with positive mass — callers should surface this to the UI
