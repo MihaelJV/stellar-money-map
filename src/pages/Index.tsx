@@ -439,7 +439,7 @@ const Index = () => {
 
       <main className="container space-y-4 py-6">
         {/* Date range */}
-        <Card className="bg-gradient-card p-6 shadow-card">
+        <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
           <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto] md:items-end">
             <div className="space-y-2">
               <Label htmlFor="start">Start date</Label>
@@ -456,7 +456,7 @@ const Index = () => {
         </Card>
 
         {/* Add ticker */}
-        <Card className="bg-gradient-card p-6 shadow-card">
+        <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
           <div className="flex items-end gap-3">
             <div className="flex-1 space-y-2">
               <Label htmlFor="ticker">Add ticker</Label>
@@ -481,8 +481,8 @@ const Index = () => {
         {/* Portfolio composition */}
         {assets.length > 0 && (
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="bg-gradient-card p-6 shadow-card">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
+              <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <Activity className="h-4 w-4 text-primary" />
                 Allocation
               </h2>
@@ -700,8 +700,8 @@ const Index = () => {
               </div>
             </Card>
 
-            <Card className="bg-gradient-card p-6 shadow-card">
-              <h2 className="mb-4 text-lg font-semibold">Portfolio structure</h2>
+            <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
+              <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Portfolio structure</h2>
               <div className="h-72">
                 <ResponsiveContainer>
                   <PieChart>
@@ -765,8 +765,8 @@ const Index = () => {
               </div>
             </Card>
 
-            <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-              <h2 className="mb-4 text-lg font-semibold">Asset returns</h2>
+            <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+              <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Asset returns</h2>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -798,8 +798,8 @@ const Index = () => {
             </Card>
 
             {correlations && (
-              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-                <h2 className="mb-4 text-lg font-semibold">Monthly return correlations</h2>
+              <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Monthly return correlations</h2>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -831,8 +831,8 @@ const Index = () => {
             )}
 
             {assets.length > 0 && (
-              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-                <h2 className="mb-4 text-lg font-semibold">Annualized standard deviation</h2>
+              <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Annualized standard deviation</h2>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -853,8 +853,8 @@ const Index = () => {
             )}
 
             {covariances && (
-              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-                <h2 className="mb-4 text-lg font-semibold">Covariance matrix (annualized)</h2>
+              <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+                <h2 className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Covariance matrix (annualized)</h2>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -886,8 +886,8 @@ const Index = () => {
             )}
 
             {assets.length > 0 && (
-              <Card className="bg-gradient-card p-6 shadow-card lg:col-span-2">
-                <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+              <Card className="bg-gradient-card p-5 shadow-card border border-border/60 lg:col-span-2">
+                <h2 className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Beta vs market (S&amp;P 500)
                   <HoverCard openDelay={150}>
                     <HoverCardTrigger asChild>
@@ -946,7 +946,7 @@ const Index = () => {
 
         {/* Scenario analysis */}
         {assets.length > 0 && (
-          <Card className="bg-gradient-card p-6 shadow-card">
+          <Card className="bg-gradient-card p-5 shadow-card border border-border/60">
             <div className="mb-6 flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold">Scenario analysis</h2>
@@ -1024,7 +1024,7 @@ const Index = () => {
         )}
 
         {assets.length === 0 && (
-          <Card className="bg-gradient-card p-12 text-center shadow-card">
+          <Card className="bg-gradient-card p-8 text-center shadow-card border border-border/60">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <Plus className="h-6 w-6 text-primary" />
             </div>
