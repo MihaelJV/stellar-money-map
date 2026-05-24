@@ -396,7 +396,7 @@ const Index = () => {
   };
 
   const baselineScenarios = useMemo<Scenario[]>(
-    () => Array(scenarioYears).fill("bullish"),
+    () => Array(scenarioYears).fill("sideways"),
     [scenarioYears],
   );
   const baselineRows = useMemo(() => buildScenarioRows(baselineScenarios), [baselineScenarios, portfolioReturn, portfolioStdDev, initialValue]);
