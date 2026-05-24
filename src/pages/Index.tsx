@@ -189,9 +189,14 @@ const Index = () => {
     let cancelled = false;
     (async () => {
       try {
-        const points = await fetchHistory(rfTicker, new Date(startDate), new Date(endDate));
+        // Rf is a forward-looking input — fetch the most recent Treasury close
+        // independent of the historical price window. Lookback of 30 days
+        // guarantees at least one quote even on weekends / holidays.
+        const today = new Date();
+        const rfStart = new Date(today);
+        rfStart.setDate(rfStart.getDate() - 30);
+        const points = await fetchHistory(rfTicker, rfStart, today);
         if (!cancelled && points.length > 0) {
-          // Yahoo treasury yield indices quote yield in percent
           setRiskFreeRate(points[points.length - 1].close / 100);
         }
       } catch {
@@ -199,7 +204,8 @@ const Index = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [rfTicker, startDate, endDate]);
+  }, [rfTicker]);
+
 
   // Market monthly returns + CAGR (S&P 500) — used for beta and the shrinkage prior
   const [marketMonthly, setMarketMonthly] = useState<Map<string, number> | null>(null);
