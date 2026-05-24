@@ -200,8 +200,12 @@ export function constrainWeights(
       if (x[i] < cap && x[i] > 0) x[i] += excess * (x[i] / freeSum);
     }
   }
+  // Final hardening: protect against floating-point drift / early-break under-normalisation.
+  const total = x.reduce((a, b) => a + b, 0);
+  if (total > 0) x = x.map((v) => v / total);
   return x;
 }
+
 
 /**
  * Per-scenario shock applied to the portfolio's arithmetic expected return,
